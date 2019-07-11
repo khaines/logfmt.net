@@ -1,1 +1,4 @@
-*/bin/
+logfmt/bin/
+logfmt/obj/
+logfmt_tests/bin/
+logfmt_tests/obj/
