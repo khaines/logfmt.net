@@ -9,7 +9,7 @@ namespace logfmt_tests
     public class Tests
     {
         [Fact]
-        public void LogOutput()
+        public void LogInfoOutput()
         {
             var outputStream = new MemoryStream();
             var logger = new Logger(outputStream);
@@ -22,7 +22,63 @@ namespace logfmt_tests
 
             var output = reader.ReadLine();
 
-            Assert.Contains("msg=\"hello logs!\"", output);
+            Assert.Contains("level=info msg=\"hello logs!\"", output);
+
+        }
+        
+        [Fact]
+        public void LogDebugOutput()
+        {
+            var outputStream = new MemoryStream();
+            var logger = new Logger(outputStream);
+
+            // write a log entry
+            logger.Debug("hello logs!");
+
+            outputStream.Seek(0,SeekOrigin.Begin);
+            var reader = new StreamReader(outputStream);
+
+            var output = reader.ReadLine();
+
+            Assert.Contains("level=debug msg=\"hello logs!\"", output);
+
+        }
+        
+        
+        [Fact]
+        public void LogIWarnOutput()
+        {
+            var outputStream = new MemoryStream();
+            var logger = new Logger(outputStream);
+
+            // write a log entry
+            logger.Warn("hello logs!");
+
+            outputStream.Seek(0,SeekOrigin.Begin);
+            var reader = new StreamReader(outputStream);
+
+            var output = reader.ReadLine();
+
+            Assert.Contains("level=warn msg=\"hello logs!\"", output);
+
+        }
+        
+        
+        [Fact]
+        public void LogErrorOutput()
+        {
+            var outputStream = new MemoryStream();
+            var logger = new Logger(outputStream);
+
+            // write a log entry
+            logger.Error("hello logs!");
+
+            outputStream.Seek(0,SeekOrigin.Begin);
+            var reader = new StreamReader(outputStream);
+
+            var output = reader.ReadLine();
+
+            Assert.Contains("level=error msg=\"hello logs!\"", output);
 
         }
 
@@ -68,5 +124,6 @@ namespace logfmt_tests
             Assert.Contains("level=info msg=\"hello logs!\" not=blue",output);
 
         }
+        
     }
 }
