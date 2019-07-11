@@ -1,23 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net.Mime;
 using System.Text;
 
 namespace logfmt
 {
     public class Logger
     {
-        private const string DATE = "ts";
-        private const string MESSAGE = "msg";
-        private const string LEVEL = "level";
-        private const string INFO = "info";
-        private const string DEBUG = "debug";
-        private const string WARN = "warn";
-        private const string ERROR = "error";
-        private const string FIELDFORMAT = "{0}={1}";
+        private const string Date = "ts";
+        private const string Message = "msg";
+        private const string Level = "level";
+        private const string InfoLevel = "info";
+        private const string DebugLevel = "debug";
+        private const string WarnLevel = "warn";
+        private const string ErrorLevel = "error";
+        private const string Fieldformat = "{0}={1}";
 
-        private TextWriter _output;
+        private readonly TextWriter _output;
 
         public Logger()
         {
@@ -31,24 +30,24 @@ namespace logfmt
 
         public void Info(string msg, params KeyValuePair<string, string>[] kvpairs)
         {
-            this.Log(msg, INFO, kvpairs);
+            Log(msg, InfoLevel, kvpairs);
         }
 
         public void Debug(string msg, params KeyValuePair<string, string>[] kvpairs)
         {
-            this.Log(msg, DEBUG, kvpairs);
+            Log(msg, DebugLevel, kvpairs);
         }
 
 
         public void Warn(string msg, params KeyValuePair<string, string>[] kvpairs)
         {
-            this.Log(msg, WARN, kvpairs);
+            Log(msg, WarnLevel, kvpairs);
         }
 
 
         public void Error(string msg, params KeyValuePair<string, string>[] kvpairs)
         {
-            this.Log(msg, ERROR, kvpairs);
+            Log(msg, ErrorLevel, kvpairs);
         }
 
         private void Log(string msg, string severity, params KeyValuePair<string, string>[] kvpairs)
@@ -56,26 +55,25 @@ namespace logfmt
             var buffer = new StringBuilder();
 
             // Date in ISO8601 format
-            buffer.Append(String.Format(FIELDFORMAT, DATE, DateTime.UtcNow.ToString("o")));
+            buffer.Append(string.Format(Fieldformat, Date, DateTime.UtcNow.ToString("o")));
             buffer.Append(" ");
 
             // severity level
-            buffer.Append(String.Format(FIELDFORMAT, LEVEL, severity));
+            buffer.Append(string.Format(Fieldformat, Level, severity));
             buffer.Append(" ");
 
             // message
-            buffer.Append(String.Format(FIELDFORMAT, MESSAGE, this.PrepareValueField(msg)));
+            buffer.Append(string.Format(Fieldformat, Message, PrepareValueField(msg)));
 
 
-
-            // paramter pairs
-            foreach (KeyValuePair<string, string> pair in kvpairs)
+            // parameter pairs
+            foreach (var pair in kvpairs)
             {
                 buffer.Append(" ");
                 // message
-                buffer.Append(String.Format(FIELDFORMAT, this.PrepareKeyField(pair.Key), this.PrepareValueField(pair.Value)));
+                buffer.Append(string.Format(Fieldformat, PrepareKeyField(pair.Key), PrepareValueField(pair.Value)));
             }
-            
+
             _output.WriteLine(buffer.ToString());
             _output.Flush();
         }
@@ -96,8 +94,8 @@ namespace logfmt
         {
             if (key.Contains(" "))
             {
-                this.Warn("Error in processing log request. Key field cannot contain spaces and has been truncated.",
-                    new[] {new KeyValuePair<string, string>("invalid_key", key)});
+                Warn("Error in processing log request. Key field cannot contain spaces and has been truncated.",
+                    new KeyValuePair<string, string>("invalid_key", key));
                 var space = key.IndexOf(" ");
                 key = key.Substring(0, space);
             }
