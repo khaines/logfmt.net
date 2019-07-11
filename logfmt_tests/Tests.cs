@@ -5,7 +5,7 @@ using Xunit;
 
 namespace logfmt_tests
 {
-    public class UnitTest1
+    public class Tests
     {
         [Fact]
         public void LogOutput()
