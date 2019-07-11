@@ -1,0 +1,17 @@
+/Users/kenhaines/code/git/logfmt/logfmt_tests/bin/Debug/netcoreapp2.2/xunit.runner.visualstudio.dotnetcore.testadapter.dll
+/Users/kenhaines/code/git/logfmt/logfmt_tests/bin/Debug/netcoreapp2.2/xunit.runner.reporters.netcoreapp10.dll
+/Users/kenhaines/code/git/logfmt/logfmt_tests/bin/Debug/netcoreapp2.2/xunit.runner.utility.netcoreapp10.dll
+/Users/kenhaines/code/git/logfmt/logfmt_tests/bin/Debug/netcoreapp2.2/logfmt_tests.deps.json
+/Users/kenhaines/code/git/logfmt/logfmt_tests/bin/Debug/netcoreapp2.2/logfmt_tests.runtimeconfig.json
+/Users/kenhaines/code/git/logfmt/logfmt_tests/bin/Debug/netcoreapp2.2/logfmt_tests.runtimeconfig.dev.json
+/Users/kenhaines/code/git/logfmt/logfmt_tests/bin/Debug/netcoreapp2.2/logfmt_tests.dll
+/Users/kenhaines/code/git/logfmt/logfmt_tests/bin/Debug/netcoreapp2.2/logfmt_tests.pdb
+/Users/kenhaines/code/git/logfmt/logfmt_tests/bin/Debug/netcoreapp2.2/logfmt.dll
+/Users/kenhaines/code/git/logfmt/logfmt_tests/bin/Debug/netcoreapp2.2/logfmt.pdb
+/Users/kenhaines/code/git/logfmt/logfmt_tests/obj/Debug/netcoreapp2.2/logfmt_tests.csprojAssemblyReference.cache
+/Users/kenhaines/code/git/logfmt/logfmt_tests/obj/Debug/netcoreapp2.2/logfmt_tests.csproj.CoreCompileInputs.cache
+/Users/kenhaines/code/git/logfmt/logfmt_tests/obj/Debug/netcoreapp2.2/logfmt_tests.AssemblyInfoInputs.cache
+/Users/kenhaines/code/git/logfmt/logfmt_tests/obj/Debug/netcoreapp2.2/logfmt_tests.AssemblyInfo.cs
+/Users/kenhaines/code/git/logfmt/logfmt_tests/obj/Debug/netcoreapp2.2/logfmt_tests.csproj.CopyComplete
+/Users/kenhaines/code/git/logfmt/logfmt_tests/obj/Debug/netcoreapp2.2/logfmt_tests.dll
+/Users/kenhaines/code/git/logfmt/logfmt_tests/obj/Debug/netcoreapp2.2/logfmt_tests.pdb

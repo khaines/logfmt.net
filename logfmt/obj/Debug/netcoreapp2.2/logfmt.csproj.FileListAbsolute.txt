@@ -1,0 +1,9 @@
+/Users/kenhaines/code/git/logfmt/logfmt/bin/Debug/netcoreapp2.2/logfmt.deps.json
+/Users/kenhaines/code/git/logfmt/logfmt/bin/Debug/netcoreapp2.2/logfmt.dll
+/Users/kenhaines/code/git/logfmt/logfmt/bin/Debug/netcoreapp2.2/logfmt.pdb
+/Users/kenhaines/code/git/logfmt/logfmt/obj/Debug/netcoreapp2.2/logfmt.csprojAssemblyReference.cache
+/Users/kenhaines/code/git/logfmt/logfmt/obj/Debug/netcoreapp2.2/logfmt.csproj.CoreCompileInputs.cache
+/Users/kenhaines/code/git/logfmt/logfmt/obj/Debug/netcoreapp2.2/logfmt.AssemblyInfoInputs.cache
+/Users/kenhaines/code/git/logfmt/logfmt/obj/Debug/netcoreapp2.2/logfmt.AssemblyInfo.cs
+/Users/kenhaines/code/git/logfmt/logfmt/obj/Debug/netcoreapp2.2/logfmt.dll
+/Users/kenhaines/code/git/logfmt/logfmt/obj/Debug/netcoreapp2.2/logfmt.pdb
