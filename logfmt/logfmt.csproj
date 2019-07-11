@@ -3,6 +3,8 @@
     <PropertyGroup>
         <TargetFramework>netcoreapp2.2</TargetFramework>
         <AssemblyName>logfmt.net</AssemblyName>
+        <PackageVersion>0.0.1-alpha</PackageVersion>
+        <Title>logfmt.net</Title>
     </PropertyGroup>
 
 </Project>
