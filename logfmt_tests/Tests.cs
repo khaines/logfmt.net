@@ -32,12 +32,11 @@ namespace logfmt_tests
 {
     public class Tests
     {
-
         [Fact]
         public void CreateLoggerWithDefaultFieldsTest()
         {
             var outputStream = new MemoryStream();
-            var logger = new Logger(outputStream).WithData(new KeyValuePair<string, string>("module","foo"));
+            var logger = new Logger(outputStream).WithData(new KeyValuePair<string, string>("module", "foo"));
 
             // write a log entry
             logger.Info("hello logs!");
@@ -49,7 +48,26 @@ namespace logfmt_tests
 
             Assert.Contains("level=info msg=\"hello logs!\" module=foo", output);
         }
-        
+
+        [Fact]
+        public void ExpectNoExceptionOnClosedStream()
+        {
+            var outputStream = new MemoryStream();
+            var logger = new Logger(outputStream);
+
+            outputStream.Close();
+            outputStream.Dispose();
+            try
+            {
+                // write a log entry. The stream is closed/disposed, but this shouldn't result in an unhandled exception to the caller
+                logger.Info("hello logs!");
+            }
+            catch (Exception e)
+            {
+                Assert.Null(e);
+            }
+        }
+
         [Fact]
         public void ExpectWarningWithInvalidKeyName()
         {
@@ -71,25 +89,6 @@ namespace logfmt_tests
             output = reader.ReadLine();
             // line we input, but with the trucated key name
             Assert.Contains("level=info msg=\"hello logs!\" not=blue", output);
-        }
-
-        [Fact]
-        public void ExpectNoExceptionOnClosedStream()
-        {
-            MemoryStream outputStream = new MemoryStream();
-            var logger = new Logger(outputStream);
-
-            outputStream.Close();
-            outputStream.Dispose();
-            try
-            {
-                // write a log entry. The stream is closed/disposed, but this shouldn't result in an unhandled exception to the caller
-                logger.Info("hello logs!");
-            }
-            catch (Exception e)
-            {
-                Assert.Null(e);
-            }
         }
 
         [Fact]

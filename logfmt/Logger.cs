@@ -44,7 +44,7 @@ namespace logfmt
         private readonly Stream _outputStream;
         private List<KeyValuePair<string, string>> _includedData;
 
-        public Logger():this(Console.OpenStandardOutput())
+        public Logger() : this(Console.OpenStandardOutput())
         {
         }
 
@@ -109,7 +109,7 @@ namespace logfmt
                 // data pair
                 buffer.Append(string.Format(Fieldformat, PrepareKeyField(pair.Key), PrepareValueField(pair.Value)));
             }
-            
+
             // default data to be included
             foreach (var pair in _includedData)
             {
@@ -117,7 +117,7 @@ namespace logfmt
                 // data pair
                 buffer.Append(string.Format(Fieldformat, PrepareKeyField(pair.Key), PrepareValueField(pair.Value)));
             }
-            
+
             if (_outputStream.CanWrite)
             {
                 _output.WriteLine(buffer.ToString());
