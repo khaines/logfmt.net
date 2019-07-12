@@ -1,4 +1,4 @@
-all: clean restore build test pack
+all: clean restore build test
 
 clean:
 	dotnet clean logfmt/
@@ -6,8 +6,10 @@ clean:
 restore:
 	dotnet restore logfmt/
 build:
+	
+	sed -i '' "s;\<PackageVersion\>.*\<;\<PackageVersion\>$(shell ./tools/getversion.sh)\<;g" logfmt/logfmt.csproj
 	dotnet build logfmt/
 test:
 	dotnet test logfmt_tests/
 pack:
-	nuget pack logfmt/
+	dotnet pack -o ../ logfmt/
