@@ -42,6 +42,7 @@ namespace logfmt
 
         private readonly TextWriter _output;
         private readonly Stream _outputStream;
+        private List<KeyValuePair<string, string>> _includedData;
 
         public Logger():this(Console.OpenStandardOutput())
         {
@@ -51,6 +52,16 @@ namespace logfmt
         {
             _outputStream = stream;
             _output = new StreamWriter(_outputStream);
+            _includedData = new List<KeyValuePair<string, string>>();
+        }
+
+        public Logger WithData(params KeyValuePair<string, string>[] kvpairs)
+        {
+            var newLogger = new Logger(_outputStream);
+            newLogger._includedData = _includedData;
+            newLogger._includedData.AddRange(kvpairs);
+
+            return newLogger;
         }
 
         public void Info(string msg, params KeyValuePair<string, string>[] kvpairs)
@@ -95,10 +106,18 @@ namespace logfmt
             foreach (var pair in kvpairs)
             {
                 buffer.Append(" ");
-                // message
+                // data pair
                 buffer.Append(string.Format(Fieldformat, PrepareKeyField(pair.Key), PrepareValueField(pair.Value)));
             }
-
+            
+            // default data to be included
+            foreach (var pair in _includedData)
+            {
+                buffer.Append(" ");
+                // data pair
+                buffer.Append(string.Format(Fieldformat, PrepareKeyField(pair.Key), PrepareValueField(pair.Value)));
+            }
+            
             if (_outputStream.CanWrite)
             {
                 _output.WriteLine(buffer.ToString());

@@ -32,6 +32,24 @@ namespace logfmt_tests
 {
     public class Tests
     {
+
+        [Fact]
+        public void CreateLoggerWithDefaultFieldsTest()
+        {
+            var outputStream = new MemoryStream();
+            var logger = new Logger(outputStream).WithData(new KeyValuePair<string, string>("module","foo"));
+
+            // write a log entry
+            logger.Info("hello logs!");
+
+            outputStream.Seek(0, SeekOrigin.Begin);
+            var reader = new StreamReader(outputStream);
+
+            var output = reader.ReadLine();
+
+            Assert.Contains("level=info msg=\"hello logs!\" module=foo", output);
+        }
+        
         [Fact]
         public void ExpectWarningWithInvalidKeyName()
         {
