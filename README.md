@@ -1,4 +1,4 @@
-==Project Intro==
+## Project Intro
 logfmt.net is intended to be a simple & lightweight structured logging library for .net applications.
 
 Goals:
