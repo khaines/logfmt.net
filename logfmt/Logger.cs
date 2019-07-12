@@ -41,15 +41,16 @@ namespace logfmt
         private const string Fieldformat = "{0}={1}";
 
         private readonly TextWriter _output;
+        private readonly Stream _outputStream;
 
-        public Logger()
+        public Logger():this(Console.OpenStandardOutput())
         {
-            _output = Console.Out;
         }
 
         public Logger(Stream stream)
         {
-            _output = new StreamWriter(stream);
+            _outputStream = stream;
+            _output = new StreamWriter(_outputStream);
         }
 
         public void Info(string msg, params KeyValuePair<string, string>[] kvpairs)
@@ -98,8 +99,11 @@ namespace logfmt
                 buffer.Append(string.Format(Fieldformat, PrepareKeyField(pair.Key), PrepareValueField(pair.Value)));
             }
 
-            _output.WriteLine(buffer.ToString());
-            _output.Flush();
+            if (_outputStream.CanWrite)
+            {
+                _output.WriteLine(buffer.ToString());
+                _output.Flush();
+            }
         }
 
 

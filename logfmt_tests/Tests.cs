@@ -22,6 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using logfmt;
@@ -52,6 +53,25 @@ namespace logfmt_tests
             output = reader.ReadLine();
             // line we input, but with the trucated key name
             Assert.Contains("level=info msg=\"hello logs!\" not=blue", output);
+        }
+
+        [Fact]
+        public void ExpectNoExceptionOnClosedStream()
+        {
+            MemoryStream outputStream = new MemoryStream();
+            var logger = new Logger(outputStream);
+
+            outputStream.Close();
+            outputStream.Dispose();
+            try
+            {
+                // write a log entry. The stream is closed/disposed, but this shouldn't result in an unhandled exception to the caller
+                logger.Info("hello logs!");
+            }
+            catch (Exception e)
+            {
+                Assert.Null(e);
+            }
         }
 
         [Fact]
