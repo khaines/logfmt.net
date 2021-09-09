@@ -5,9 +5,7 @@ clean:
 	rm -f *.nupkg
 restore:
 	dotnet restore logfmt/
-build:
-	
-	sed -i '' "s;\<PackageVersion\>.*\<;\<PackageVersion\>$(shell ./tools/getversion.sh)\<;g" logfmt/logfmt.csproj
+build:	
 	dotnet build logfmt/
 test:
 	dotnet test logfmt_tests/
