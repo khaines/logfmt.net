@@ -1,13 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>netcoreapp2.2</TargetFramework>
+        <TargetFramework>net5.0</TargetFramework>
         <AssemblyName>logfmt.net</AssemblyName>
-        <PackageVersion>0.0.2-alpha</PackageVersion>
+        <PackageVersion>0.0.2-alpha-4-g07b126f</PackageVersion>
         <Title>logfmt.net</Title>
         <Authors>Ken Haines</Authors>
         <Description>A lightweight logfmt logging library for .net applications</Description>
-        <Copyright>Copyright 2019</Copyright>
+        <Copyright>Copyright 2021</Copyright>
         <PackageProjectUrl>https://github.com/khaines/logfmt.net</PackageProjectUrl>
         <PackageLicenseUrl>https://github.com/khaines/logfmt.net/blob/master/LICENSE</PackageLicenseUrl>
         <RepositoryUrl>https://github.com/khaines/logfmt.net</RepositoryUrl>
