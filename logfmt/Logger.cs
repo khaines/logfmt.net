@@ -62,7 +62,7 @@ namespace logfmt
       return newLogger;
     }
 
-    public void Log(SeverityLevel severity, string msg, params KeyValuePair<string, string>[] kvpairs)
+    public void Log(SeverityLevel severity, params KeyValuePair<string, string>[] kvpairs)
     {
       var buffer = new StringBuilder();
 
@@ -71,23 +71,19 @@ namespace logfmt
       buffer.Append(" ");
 
       // severity level
-      buffer.Append(string.Format(Fieldformat, Level, severity));
-      buffer.Append(" ");
-
-      // message
-      buffer.Append(string.Format(Fieldformat, Message, PrepareValueField(msg)));
-
+      buffer.Append(string.Format(Fieldformat, Level, severity.ToLower()));
 
       // parameter pairs
-      foreach (var pair in kvpairs)
+      foreach (var pair in kvpairs.Where(kv => !string.IsNullOrWhiteSpace(kv.Key)))
       {
         buffer.Append(" ");
         // data pair
         buffer.Append(string.Format(Fieldformat, PrepareKeyField(pair.Key), PrepareValueField(pair.Value)));
+
       }
 
       // default data to be included
-      foreach (var pair in _includedData)
+      foreach (var pair in _includedData.Where(kv => !string.IsNullOrWhiteSpace(kv.Key)))
       {
         buffer.Append(" ");
         // data pair
@@ -105,19 +101,15 @@ namespace logfmt
     {
       this.CheckParamArrayLength(kvpairs);
 
-      KeyValuePair<string, string>[] pairs = new KeyValuePair<string, string>[kvpairs.Length / 2];
+      List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>();
 
+      pairs.Add(new KeyValuePair<string, string>(Message, msg));
       for (var i = 0; i < kvpairs.Length; i += 2)
       {
-        pairs[i / 2] = new KeyValuePair<string, string>(kvpairs[i], kvpairs[i + 1]);
+        pairs.Add(new KeyValuePair<string, string>(kvpairs[i], kvpairs[i + 1]));
       }
 
-      this.Log(severity, msg, pairs);
-    }
-
-    public void Log(SeverityLevel severity, string msg, params object[] kvpairs)
-    {
-      this.Log(severity, msg, kvpairs.Select(o => o.ToString()));
+      this.Log(severity, pairs.ToArray());
     }
 
     private void CheckParamArrayLength<T>(T[] kvpairs)
@@ -142,7 +134,10 @@ namespace logfmt
     {
       if (key.Contains(" "))
       {
-        throw new ArgumentException($"field key '{key}' contains a space. Please correct formating");
+        // TODO: decide on pattern of throwing exception or just outputting a warning
+        // throw new ArgumentException($"field key '{key}' contains a space. Please correct formating");
+        this.Warn("Error in processing log request. Key field cannot contain spaces and has been truncated.", "invalid_key", key);
+        key = key.Split(" ")[0];
       }
       return key;
     }

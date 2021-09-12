@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace logfmt
 {
   public enum SeverityLevel
@@ -9,6 +11,5 @@ namespace logfmt
     Error,
     Critical
   }
-
 
 }

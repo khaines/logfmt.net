@@ -75,8 +75,7 @@ namespace logfmt_tests
       var logger = new Logger(outputStream);
 
       // write a log entry, but use a KVPair key containing a space. There should be a warning entry added to the output stream
-      logger.Log(SeverityLevel.Info, "hello logs!",
-          new KeyValuePair<string, string>("not valid key", "blue"));
+      logger.Log(SeverityLevel.Info, "hello logs!", "not valid key", "blue");
 
       outputStream.Seek(0, SeekOrigin.Begin);
       var reader = new StreamReader(outputStream);
