@@ -5,27 +5,24 @@ namespace logfmt
   using Microsoft.Extensions.Logging;
   public static class LoggerExtensions
   {
-
-    public static void Info(this Logger logger, string msg, params KeyValuePair<string, string>[] kvpairs)
+    public static void Info(this Logger logger, string msg, params string[] kvpairs)
     {
-      logger.Log(msg, SeverityLevel.Info, kvpairs);
+      logger.Log(SeverityLevel.Info, msg, kvpairs);
     }
 
-    public static void Debug(this Logger logger, string msg, params KeyValuePair<string, string>[] kvpairs)
+    public static void Debug(this Logger logger, string msg, params string[] kvpairs)
     {
-      logger.Log(msg, SeverityLevel.Debug, kvpairs);
+      logger.Log(SeverityLevel.Debug, msg, kvpairs);
     }
 
-
-    public static void Warn(this Logger logger, string msg, params KeyValuePair<string, string>[] kvpairs)
+    public static void Warn(this Logger logger, string msg, params string[] kvpairs)
     {
-      logger.Log(msg, SeverityLevel.Warn, kvpairs);
+      logger.Log(SeverityLevel.Warn, msg, kvpairs);
     }
 
-
-    public static void Error(this Logger logger, string msg, params KeyValuePair<string, string>[] kvpairs)
+    public static void Error(this Logger logger, string msg, params string[] kvpairs)
     {
-      logger.Log(msg, SeverityLevel.Error, kvpairs);
+      logger.Log(SeverityLevel.Error, msg, kvpairs);
     }
   }
 }

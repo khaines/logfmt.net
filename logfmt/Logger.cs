@@ -27,6 +27,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Microsoft.VisualBasic;
 
 namespace logfmt
 {
@@ -61,7 +62,7 @@ namespace logfmt
       return newLogger;
     }
 
-    public void Log(string msg, SeverityLevel severity, params KeyValuePair<string, string>[] kvpairs)
+    public void Log(SeverityLevel severity, string msg, params KeyValuePair<string, string>[] kvpairs)
     {
       var buffer = new StringBuilder();
 
@@ -100,7 +101,32 @@ namespace logfmt
       }
     }
 
+    public void Log(SeverityLevel severity, string msg, params string[] kvpairs)
+    {
+      this.CheckParamArrayLength(kvpairs);
 
+      KeyValuePair<string, string>[] pairs = new KeyValuePair<string, string>[kvpairs.Length / 2];
+
+      for (var i = 0; i < kvpairs.Length; i += 2)
+      {
+        pairs[i / 2] = new KeyValuePair<string, string>(kvpairs[i], kvpairs[i + 1]);
+      }
+
+      this.Log(severity, msg, pairs);
+    }
+
+    public void Log(SeverityLevel severity, string msg, params object[] kvpairs)
+    {
+      this.Log(severity, msg, kvpairs.Select(o => o.ToString()));
+    }
+
+    private void CheckParamArrayLength<T>(T[] kvpairs)
+    {
+      if (kvpairs.Length % 2 != 0)
+      {
+        throw new ArgumentException("kvpairs must be an array with an even number of elements");
+      }
+    }
     private string PrepareValueField(string value)
     {
       if (value.Contains(" "))
