@@ -27,6 +27,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.VisualBasic;
 
 namespace logfmt
@@ -37,6 +38,9 @@ namespace logfmt
     private const string Message = "msg";
     private const string Level = "level";
     private const string Fieldformat = "{0}={1}";
+
+    //will match spaces and other invalid characters that should not be in the key field
+    private readonly Regex KeyNameFilter = new Regex("([^a-z0-9_])+", RegexOptions.IgnoreCase & RegexOptions.Compiled);
 
     private readonly TextWriter _output;
     private readonly Stream _outputStream;
@@ -132,14 +136,7 @@ namespace logfmt
 
     private string PrepareKeyField(string key)
     {
-      if (key.Contains(" "))
-      {
-        // TODO: decide on pattern of throwing exception or just outputting a warning
-        // throw new ArgumentException($"field key '{key}' contains a space. Please correct formating");
-        this.Warn("Error in processing log request. Key field cannot contain spaces and has been truncated.", "invalid_key", key);
-        key = key.Split(" ")[0];
-      }
-      return key;
+      return KeyNameFilter.Replace(key, "_");
     }
   }
 }
