@@ -7,6 +7,7 @@
          <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
       <EnableNETAnalyzers>true</EnableNETAnalyzers>
       <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+      <GenerateDocumentationFile>true</GenerateDocumentationFile>
     </PropertyGroup>
 
     <ItemGroup>
@@ -19,10 +20,6 @@
   
       <ProjectReference Include="..\Logfmt\Logfmt.csproj" />
       <PackageReference Include="StyleCop.Analyzers" Version="1.1.118"/>
-      <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="5.0.3">
-        <PrivateAssets>all</PrivateAssets>
-        <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-      </PackageReference>
     </ItemGroup>
 
     <ItemGroup>
