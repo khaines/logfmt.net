@@ -4,6 +4,9 @@
         <TargetFramework>net5.0</TargetFramework>
 
         <IsPackable>false</IsPackable>
+         <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
+      <EnableNETAnalyzers>true</EnableNETAnalyzers>
+      <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     </PropertyGroup>
 
     <ItemGroup>
@@ -13,7 +16,18 @@
     </ItemGroup>
 
     <ItemGroup>
+  
       <ProjectReference Include="..\Logfmt\Logfmt.csproj" />
+      <PackageReference Include="StyleCop.Analyzers" Version="1.1.118"/>
+      <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="5.0.3">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      </PackageReference>
     </ItemGroup>
+
+    <ItemGroup>
+       <AdditionalFiles Include="../stylecop.json" />
+    </ItemGroup>
+
 
 </Project>

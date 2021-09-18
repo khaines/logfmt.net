@@ -1,38 +1,20 @@
-﻿/*
-MIT License
-
-Copyright (c) 2021 Ken Haines
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-*/
-
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection.Metadata.Ecma335;
-using System.Text;
-using System.Text.RegularExpressions;
-using Microsoft.VisualBasic;
+﻿// Copyright (c) Ken Haines. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 namespace Logfmt
 {
+  using System;
+  using System.Collections.Generic;
+  using System.IO;
+  using System.Linq;
+  using System.Reflection.Metadata.Ecma335;
+  using System.Text;
+  using System.Text.RegularExpressions;
+  using Microsoft.VisualBasic;
+
+  /// <summary>
+  /// The logfmt logger. Outputs data to the underlying stream as a string using the `logfmt` format.
+  /// </summary>
   public class Logger
   {
     private const string Date = "ts";
@@ -40,44 +22,70 @@ namespace Logfmt
     private const string Level = "level";
     private const string Fieldformat = "{0}={1}";
 
-    //will match spaces and other invalid characters that should not be in the key field
-    private readonly Regex KeyNameFilter = new Regex("([^a-z0-9_])+", RegexOptions.IgnoreCase & RegexOptions.Compiled);
+    // will match spaces and other invalid characters that should not be in the key field
+    private readonly Regex keyNameFilter = new Regex("([^a-z0-9_])+", RegexOptions.IgnoreCase & RegexOptions.Compiled);
 
-    private readonly TextWriter _output;
-    private readonly Stream _outputStream;
-    private List<KeyValuePair<string, string>> _includedData;
+    private readonly TextWriter output;
+    private readonly Stream outputStream;
+    private List<KeyValuePair<string, string>> includedData;
 
-    public Logger() : this(Console.OpenStandardOutput())
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Logger"/> class.
+    /// </summary>
+    public Logger()
+        : this(Console.OpenStandardOutput())
     {
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Logger"/> class.
+    /// </summary>
+    /// <param name="stream">The stream to output log lines to.</param>
     public Logger(Stream stream)
     {
-      _outputStream = stream;
-      _output = new StreamWriter(_outputStream);
-      _includedData = new List<KeyValuePair<string, string>>();
+      outputStream = stream;
+      output = new StreamWriter(outputStream);
+      includedData = new List<KeyValuePair<string, string>>();
     }
 
+    /// <summary>
+    /// Creates a new logger with the provided parameters.
+    /// </summary>
+    /// <param name="kvpairs">labels and values to include with log output.</param>
+    /// <returns>A new <see cref="Logfmt.Logger"/> instance.</returns>
     public Logger WithData(params KeyValuePair<string, string>[] kvpairs)
     {
-      var newLogger = new Logger(_outputStream);
-      newLogger._includedData = _includedData;
-      newLogger._includedData.AddRange(kvpairs);
+      var newLogger = new Logger(outputStream)
+      {
+        includedData = includedData,
+      };
+      newLogger.includedData.AddRange(kvpairs);
 
       return newLogger;
     }
 
+    /// <summary>
+    /// Creates a new logger with the provided parameters.
+    /// </summary>
+    /// <param name="kvpairs">labels and values to include with log output.</param>
+    /// <returns>A new <see cref="Logfmt.Logger"/> instance.</returns>
     public Logger WithData(params string[] kvpairs)
     {
       this.CheckParamArrayLength(kvpairs);
-      List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>();
+      var pairs = new List<KeyValuePair<string, string>>();
       for (var i = 0; i < kvpairs.Length; i += 2)
       {
         pairs.Add(new KeyValuePair<string, string>(kvpairs[i], kvpairs[i + 1]));
       }
+
       return this.WithData(pairs.ToArray());
     }
 
+    /// <summary>
+    /// Writes a log entry to the underlying stream.
+    /// </summary>
+    /// <param name="severity">The severity of the log entry.</param>
+    /// <param name="kvpairs">labels and values to include with the entry.</param>
     public void Log(SeverityLevel severity, params KeyValuePair<string, string>[] kvpairs)
     {
       var buffer = new StringBuilder();
@@ -93,31 +101,38 @@ namespace Logfmt
       foreach (var pair in kvpairs.Where(kv => !string.IsNullOrWhiteSpace(kv.Key)))
       {
         buffer.Append(" ");
+
         // data pair
         buffer.Append(string.Format(Fieldformat, PrepareKeyField(pair.Key), PrepareValueField(pair.Value)));
-
       }
 
       // default data to be included
-      foreach (var pair in _includedData.Where(kv => !string.IsNullOrWhiteSpace(kv.Key)))
+      foreach (var pair in includedData.Where(kv => !string.IsNullOrWhiteSpace(kv.Key)))
       {
         buffer.Append(" ");
+
         // data pair
         buffer.Append(string.Format(Fieldformat, PrepareKeyField(pair.Key), PrepareValueField(pair.Value)));
       }
 
-      if (_outputStream.CanWrite)
+      if (outputStream.CanWrite)
       {
-        _output.WriteLine(buffer.ToString());
-        _output.Flush();
+        output.WriteLine(buffer.ToString());
+        output.Flush();
       }
     }
 
+    /// <summary>
+    /// Writes a log entry to the underlying stream.
+    /// </summary>
+    /// <param name="severity">The severity of the log entry.</param>
+    /// <param name="msg">the log message value.</param>
+    /// <param name="kvpairs">labels and values to include with the entry.</param>
     public void Log(SeverityLevel severity, string msg, params string[] kvpairs)
     {
-      this.CheckParamArrayLength(kvpairs);
+      CheckParamArrayLength(kvpairs);
 
-      List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>();
+      var pairs = new List<KeyValuePair<string, string>>();
 
       pairs.Add(new KeyValuePair<string, string>(Message, msg));
       for (var i = 0; i < kvpairs.Length; i += 2)
@@ -125,7 +140,7 @@ namespace Logfmt
         pairs.Add(new KeyValuePair<string, string>(kvpairs[i], kvpairs[i + 1]));
       }
 
-      this.Log(severity, pairs.ToArray());
+      Log(severity, pairs.ToArray());
     }
 
     private void CheckParamArrayLength<T>(T[] kvpairs)
@@ -135,6 +150,7 @@ namespace Logfmt
         throw new ArgumentException("kvpairs must be an array with an even number of elements");
       }
     }
+
     private string PrepareValueField(string value)
     {
       if (value.Contains(" "))
@@ -148,7 +164,7 @@ namespace Logfmt
 
     private string PrepareKeyField(string key)
     {
-      return KeyNameFilter.Replace(key, "_");
+      return keyNameFilter.Replace(key, "_");
     }
   }
 }

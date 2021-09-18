@@ -1,57 +1,65 @@
-/*
-MIT License
+// Copyright (c) Ken Haines. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-Copyright (c) 2021 Ken Haines
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-*/
 namespace Logfmt
 {
-
-  using System.Collections.Generic;
-  using Microsoft.Extensions.Logging;
+  /// <summary>
+  /// Helper methods for use with the <see cref="Logfmt.Logger" /> class.
+  /// </summary>
   public static class LoggerExtensions
   {
+    /// <summary>
+    /// Creates a log event with a severity of Information.
+    /// </summary>
+    /// <param name="logger">the current logger instance.</param>
+    /// <param name="msg">The log message.</param>
+    /// <param name="kvpairs">The labels and values to include.</param>
     public static void Info(this Logger logger, string msg, params string[] kvpairs)
     {
       logger.Log(SeverityLevel.Info, msg, kvpairs);
     }
 
+    /// <summary>
+    /// Creates a log event with a severity of Debug.
+    /// </summary>
+    /// <param name="logger">the current logger instance.</param>
+    /// <param name="msg">The log message.</param>
+    /// <param name="kvpairs">The labels and values to include.</param>
     public static void Debug(this Logger logger, string msg, params string[] kvpairs)
     {
       logger.Log(SeverityLevel.Debug, msg, kvpairs);
     }
 
+    /// <summary>
+    /// Creates a log event with a severity of Warning.
+    /// </summary>
+    /// <param name="logger">the current logger instance.</param>
+    /// <param name="msg">The log message.</param>
+    /// <param name="kvpairs">The labels and values to include.</param>
     public static void Warn(this Logger logger, string msg, params string[] kvpairs)
     {
       logger.Log(SeverityLevel.Warn, msg, kvpairs);
     }
 
+    /// <summary>
+    /// Creates a log event with a severity of Error.
+    /// </summary>
+    /// <param name="logger">the current logger instance.</param>
+    /// <param name="msg">The log message.</param>
+    /// <param name="kvpairs">The labels and values to include.</param>
     public static void Error(this Logger logger, string msg, params string[] kvpairs)
     {
       logger.Log(SeverityLevel.Error, msg, kvpairs);
     }
 
-    public static string ToLower(this SeverityLevel level)
+    /// <summary>
+    /// Converst the Severitylevel enum to a lowercase string.
+    /// </summary>
+    /// <param name="level">the severity level.</param>
+    /// <returns>a lower case string of the SeverityLevel.</returns>
+    internal static string ToLower(this SeverityLevel level)
     {
       return level.ToString().ToLower();
     }
-
   }
 }

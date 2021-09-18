@@ -1,26 +1,5 @@
-/*
-MIT License
-
-Copyright (c) 2021 Ken Haines
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-*/
+// Copyright (c) Ken Haines. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 namespace Logfmt.ExtensionLogging
 {
@@ -31,28 +10,33 @@ namespace Logfmt.ExtensionLogging
   using Logfmt;
   using Microsoft.Extensions.Logging;
 
-
+  /// <summary>
+  /// Implementation of Microsoft.Extensions.Logging.ILogger.
+  /// </summary>
   public class ExtensionLogger : ILogger
   {
-    private Logger _logger;
+    private readonly Logger logger;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ExtensionLogger"/> class.
+    /// </summary>
+    /// <param name="logger">Instance of <see cref="Logger"/> to use by this extension logger.</param>
     public ExtensionLogger(Logger logger)
     {
-      _logger = logger;
+      this.logger = logger;
     }
 
-
-    // ILogger methods
-
+    /// <inheritdoc/>
     public bool IsEnabled(LogLevel logLevel)
     {
       // TODO: add config to enable/disable logging levels.
       return true;
     }
 
+    /// <inheritdoc/>
     public IDisposable BeginScope<TState>(TState state) => NoOpScope.Instance;
 
-
+    /// <inheritdoc/>
     public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
     {
       var sevLevel = logLevel.ToSeverityLevel();
@@ -60,6 +44,7 @@ namespace Logfmt.ExtensionLogging
       {
         return;
       }
+
       var properties = new List<KeyValuePair<string, string>>();
       if (state is IEnumerable<KeyValuePair<string, object>> stateProperties)
       {
@@ -73,13 +58,14 @@ namespace Logfmt.ExtensionLogging
         properties.Add(new KeyValuePair<string, string>("msg", formatter(state, exception)));
       }
 
-      // event id 
+      // event id
       if (eventId.Id != 0 || !string.IsNullOrWhiteSpace(eventId.Name))
       {
         properties.Add(new KeyValuePair<string, string>("event_id", eventId.Id.ToString(CultureInfo.InvariantCulture)));
         properties.Add(new KeyValuePair<string, string>("event_name", eventId.Id.ToString(CultureInfo.InvariantCulture)));
       }
-      _logger.Log(sevLevel, properties.ToArray());
+
+      logger.Log(sevLevel, properties.ToArray());
     }
   }
 }

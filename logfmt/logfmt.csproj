@@ -21,11 +21,27 @@
       - Data properties on logging methods as KeyValuePairs.
       </PackageReleaseNotes>
       <LangVersion>9</LangVersion>
+      <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
+      <EnableNETAnalyzers>true</EnableNETAnalyzers>
+      <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+      <CodeAnalysisRuleSet>../stylecop.ruleset</CodeAnalysisRuleSet>
     </PropertyGroup>
 
     <ItemGroup>
       <None Remove="logfmt.nuspec" />
       <PackageReference Include="Microsoft.Extensions.Logging" Version="5.0.0" />
+      <PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      </PackageReference>
+      <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="5.0.3">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+       <AdditionalFiles Include="../stylecop.json" />
     </ItemGroup>
 
 </Project>
