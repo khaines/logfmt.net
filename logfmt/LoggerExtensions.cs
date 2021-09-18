@@ -47,6 +47,7 @@ namespace Logfmt
     {
       logger.Log(SeverityLevel.Error, msg, kvpairs);
     }
+
     public static string ToLower(this SeverityLevel level)
     {
       return level.ToString().ToLower();

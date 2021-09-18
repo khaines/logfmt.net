@@ -26,6 +26,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.VisualBasic;
@@ -64,6 +65,17 @@ namespace Logfmt
       newLogger._includedData.AddRange(kvpairs);
 
       return newLogger;
+    }
+
+    public Logger WithData(params string[] kvpairs)
+    {
+      this.CheckParamArrayLength(kvpairs);
+      List<KeyValuePair<string, string>> pairs = new List<KeyValuePair<string, string>>();
+      for (var i = 0; i < kvpairs.Length; i += 2)
+      {
+        pairs.Add(new KeyValuePair<string, string>(kvpairs[i], kvpairs[i + 1]));
+      }
+      return this.WithData(pairs.ToArray());
     }
 
     public void Log(SeverityLevel severity, params KeyValuePair<string, string>[] kvpairs)

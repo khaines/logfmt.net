@@ -39,7 +39,7 @@ namespace Logfmt.ExtensionLogging
 
     public ILogger CreateLogger(string categoryName)
     {
-      return new ExtensionLogger(_logger.WithData(new KeyValuePair<string, string>(Category, categoryName)));
+      return new ExtensionLogger(_logger.WithData(Category, categoryName));
     }
 
     public void Dispose()
