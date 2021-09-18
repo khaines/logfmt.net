@@ -21,36 +21,39 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-namespace logfmt
+
+namespace logfmt.ExtensionLogging
 {
-
-  using System.Collections.Generic;
+  using logfmt;
   using Microsoft.Extensions.Logging;
-  public static class LoggerExtensions
+
+  public static class ExtensionLoggerExtensions
   {
-    public static void Info(this Logger logger, string msg, params string[] kvpairs)
+    public static SeverityLevel ToSeverityLevel(this LogLevel level)
     {
-      logger.Log(SeverityLevel.Info, msg, kvpairs);
-    }
+      switch (level)
+      {
+        case LogLevel.Trace:
+          return SeverityLevel.Trace;
 
-    public static void Debug(this Logger logger, string msg, params string[] kvpairs)
-    {
-      logger.Log(SeverityLevel.Debug, msg, kvpairs);
-    }
+        case LogLevel.Debug:
+          return SeverityLevel.Debug;
 
-    public static void Warn(this Logger logger, string msg, params string[] kvpairs)
-    {
-      logger.Log(SeverityLevel.Warn, msg, kvpairs);
-    }
+        case LogLevel.Information:
+          return SeverityLevel.Info;
 
-    public static void Error(this Logger logger, string msg, params string[] kvpairs)
-    {
-      logger.Log(SeverityLevel.Error, msg, kvpairs);
-    }
-    public static string ToLower(this SeverityLevel level)
-    {
-      return level.ToString().ToLower();
-    }
+        case LogLevel.Warning:
+          return SeverityLevel.Warn;
 
+        case LogLevel.Error:
+          return SeverityLevel.Error;
+
+        case LogLevel.Critical:
+          return SeverityLevel.Fatal;
+
+        default:
+          return SeverityLevel.Off;
+      }
+    }
   }
 }
