@@ -18,30 +18,17 @@ namespace Logfmt.ExtensionLogging
     /// <returns>the resulting value.</returns>
     internal static SeverityLevel ToSeverityLevel(this LogLevel level)
     {
-      switch (level)
+      return level switch
       {
-        case LogLevel.Trace:
-          return SeverityLevel.Trace;
-
-        case LogLevel.Debug:
-          return SeverityLevel.Debug;
-
-        case LogLevel.Information:
-          return SeverityLevel.Info;
-
-        case LogLevel.Warning:
-          return SeverityLevel.Warn;
-
-        case LogLevel.Error:
-          return SeverityLevel.Error;
-
-        case LogLevel.Critical:
-          return SeverityLevel.Fatal;
-        case LogLevel.None:
-          return SeverityLevel.Off;
-        default:
-          return SeverityLevel.Off;
-      }
+        LogLevel.Trace => SeverityLevel.Trace,
+        LogLevel.Debug => SeverityLevel.Debug,
+        LogLevel.Information => SeverityLevel.Info,
+        LogLevel.Warning => SeverityLevel.Warn,
+        LogLevel.Error => SeverityLevel.Error,
+        LogLevel.Critical => SeverityLevel.Fatal,
+        LogLevel.None => SeverityLevel.Off,
+        _ => SeverityLevel.Off,
+      };
     }
   }
 }

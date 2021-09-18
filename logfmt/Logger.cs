@@ -22,6 +22,8 @@ namespace Logfmt
     private const string Level = "level";
     private const string Fieldformat = "{0}={1}";
 
+    private const char Spacer = ' ';
+
     // will match spaces and other invalid characters that should not be in the key field
     private readonly Regex keyNameFilter = new Regex("([^a-z0-9_])+", RegexOptions.IgnoreCase & RegexOptions.Compiled);
 
@@ -71,7 +73,7 @@ namespace Logfmt
     /// <returns>A new <see cref="Logfmt.Logger"/> instance.</returns>
     public Logger WithData(params string[] kvpairs)
     {
-      this.CheckParamArrayLength(kvpairs);
+      CheckParamArrayLength(kvpairs);
       var pairs = new List<KeyValuePair<string, string>>();
       for (var i = 0; i < kvpairs.Length; i += 2)
       {
@@ -91,28 +93,28 @@ namespace Logfmt
       var buffer = new StringBuilder();
 
       // Date in ISO8601 format
-      buffer.Append(string.Format(Fieldformat, Date, DateTime.UtcNow.ToString("o")));
-      buffer.Append(" ");
+      buffer.AppendFormat(Fieldformat, Date, DateTime.UtcNow.ToString("o"));
+      buffer.Append(Spacer);
 
       // severity level
-      buffer.Append(string.Format(Fieldformat, Level, severity.ToLower()));
+      buffer.AppendFormat(Fieldformat, Level, severity.ToLower());
 
       // parameter pairs
       foreach (var pair in kvpairs.Where(kv => !string.IsNullOrWhiteSpace(kv.Key)))
       {
-        buffer.Append(" ");
+        buffer.Append(Spacer);
 
         // data pair
-        buffer.Append(string.Format(Fieldformat, PrepareKeyField(pair.Key), PrepareValueField(pair.Value)));
+        buffer.AppendFormat(Fieldformat, PrepareKeyField(pair.Key), PrepareValueField(pair.Value));
       }
 
       // default data to be included
       foreach (var pair in includedData.Where(kv => !string.IsNullOrWhiteSpace(kv.Key)))
       {
-        buffer.Append(" ");
+        buffer.Append(Spacer);
 
         // data pair
-        buffer.Append(string.Format(Fieldformat, PrepareKeyField(pair.Key), PrepareValueField(pair.Value)));
+        buffer.AppendFormat(Fieldformat, PrepareKeyField(pair.Key), PrepareValueField(pair.Value));
       }
 
       if (outputStream.CanWrite)
@@ -132,9 +134,10 @@ namespace Logfmt
     {
       CheckParamArrayLength(kvpairs);
 
-      var pairs = new List<KeyValuePair<string, string>>();
-
-      pairs.Add(new KeyValuePair<string, string>(Message, msg));
+      var pairs = new List<KeyValuePair<string, string>>
+      {
+        new KeyValuePair<string, string>(Message, msg),
+      };
       for (var i = 0; i < kvpairs.Length; i += 2)
       {
         pairs.Add(new KeyValuePair<string, string>(kvpairs[i], kvpairs[i + 1]));
@@ -143,7 +146,7 @@ namespace Logfmt
       Log(severity, pairs.ToArray());
     }
 
-    private void CheckParamArrayLength<T>(T[] kvpairs)
+    private static void CheckParamArrayLength<T>(T[] kvpairs)
     {
       if (kvpairs.Length % 2 != 0)
       {
@@ -151,7 +154,7 @@ namespace Logfmt
       }
     }
 
-    private string PrepareValueField(string value)
+    private static string PrepareValueField(string value)
     {
       if (value.Contains(" "))
       {
