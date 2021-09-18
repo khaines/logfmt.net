@@ -25,10 +25,10 @@ SOFTWARE.
 using System;
 using System.Collections.Generic;
 using System.IO;
-using logfmt;
+using Logfmt;
 using Xunit;
 
-namespace logfmt_tests
+namespace Logfmt.Tests
 {
   public class Tests
   {

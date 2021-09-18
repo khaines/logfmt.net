@@ -22,9 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-namespace logfmt.ExtensionLogging
+namespace Logfmt.ExtensionLogging
 {
-  using logfmt;
+  using Logfmt;
   using Microsoft.Extensions.Logging;
 
   public static class ExtensionLoggerExtensions

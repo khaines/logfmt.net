@@ -24,7 +24,7 @@ SOFTWARE.
 
 using System;
 
-namespace logfmt.ExtensionLogging
+namespace Logfmt.ExtensionLogging
 {
 
   /// <summary>

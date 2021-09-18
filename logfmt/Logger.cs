@@ -30,7 +30,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.VisualBasic;
 
-namespace logfmt
+namespace Logfmt
 {
   public class Logger
   {

@@ -1,5 +1,5 @@
-logfmt/bin/
-logfmt/obj/
-logfmt_tests/bin/
-logfmt_tests/obj/
+Logfmt/bin/
+Logfmt/obj/
+Logfmt.Tests/bin/
+Logfmt.Tests/obj/
 *.nupkg
