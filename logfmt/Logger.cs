@@ -25,7 +25,7 @@ namespace Logfmt
     private const char Spacer = ' ';
 
     // will match spaces and other invalid characters that should not be in the key field
-    private readonly Regex keyNameFilter = new Regex("([^a-z0-9_])+", RegexOptions.IgnoreCase & RegexOptions.Compiled);
+    private readonly Regex keyNameFilter = new Regex("([^a-z0-9A-Z_])+", RegexOptions.IgnoreCase & RegexOptions.Compiled);
 
     private readonly TextWriter output;
     private readonly Stream outputStream;
