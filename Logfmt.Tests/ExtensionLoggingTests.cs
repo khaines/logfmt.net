@@ -4,6 +4,7 @@
 namespace Logfmt.Tests
 {
     using System.IO;
+    using System.Collections.Generic;
     using Logfmt.ExtensionLogging;
     using Microsoft.Extensions.Logging;
     using Xunit;
@@ -47,6 +48,25 @@ namespace Logfmt.Tests
             var reader = new StreamReader(outputStream);
             var output = reader.ReadLine();
             Assert.True(output == null);
+        }
+
+        /// <summary>
+        /// Tests to ensure provided state properties are logged
+        /// </summary>
+        [Fact]
+        public void TestILoggerStatePropOutput()
+        {
+            var outputStream = new MemoryStream();
+            ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info));
+            var state = new Dictionary<string, object>();
+            state["foo"] = "bar";
+            state["msg"] = "test message";
+            logger.Log(LogLevel.Warning, new EventId(1, "test"), state, null, null);
+
+            outputStream.Seek(0, SeekOrigin.Begin);
+            var reader = new StreamReader(outputStream);
+            var output = reader.ReadLine();
+            Assert.EndsWith("level=warn foo=bar msg=\"test message\" event_id=1 event_name=1", output);
         }
     }
 }
