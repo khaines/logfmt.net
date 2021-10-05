@@ -3,3 +3,4 @@ Logfmt/obj/
 Logfmt.Tests/bin/
 Logfmt.Tests/obj/
 *.nupkg
+.vscode/
