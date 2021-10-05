@@ -31,6 +31,8 @@ namespace Logfmt
     private readonly Stream outputStream;
     private List<KeyValuePair<string, string>> includedData;
 
+    private SeverityLevel levelFilter;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="Logger"/> class.
     /// </summary>
@@ -42,9 +44,20 @@ namespace Logfmt
     /// <summary>
     /// Initializes a new instance of the <see cref="Logger"/> class.
     /// </summary>
-    /// <param name="stream">The stream to output log lines to.</param>
-    public Logger(Stream stream)
+    /// <param name="levelFilter">Optional severity level filter for log output.</param>
+    public Logger(SeverityLevel levelFilter)
+    : this(Console.OpenStandardOutput(), levelFilter)
     {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Logger"/> class.
+    /// </summary>
+    /// <param name="stream">The stream to output log lines to.</param>
+    /// <param name="levelFilter">Optional severity level filter for log output.</param>
+    public Logger(Stream stream, SeverityLevel levelFilter = SeverityLevel.Info)
+    {
+      this.levelFilter = levelFilter;
       outputStream = stream;
       output = new StreamWriter(outputStream);
       includedData = new List<KeyValuePair<string, string>>();
@@ -90,6 +103,11 @@ namespace Logfmt
     /// <param name="kvpairs">labels and values to include with the entry.</param>
     public void Log(SeverityLevel severity, params KeyValuePair<string, string>[] kvpairs)
     {
+      if (!IsEnabled(severity))
+      {
+        return;
+      }
+
       var buffer = new StringBuilder();
 
       // Date in ISO8601 format
@@ -132,6 +150,11 @@ namespace Logfmt
     /// <param name="kvpairs">labels and values to include with the entry.</param>
     public void Log(SeverityLevel severity, string msg, params string[] kvpairs)
     {
+      if (!IsEnabled(severity))
+      {
+        return;
+      }
+
       CheckParamArrayLength(kvpairs);
 
       var pairs = new List<KeyValuePair<string, string>>
@@ -144,6 +167,25 @@ namespace Logfmt
       }
 
       Log(severity, pairs.ToArray());
+    }
+
+    /// <summary>
+    /// Checks if a given severity level is enabled for log output.
+    /// </summary>
+    /// <param name="level">The level for which to check.</param>
+    /// <returns>true if enabled.</returns>
+    public bool IsEnabled(SeverityLevel level)
+    {
+      return level >= levelFilter;
+    }
+
+    /// <summary>
+    /// Changes the severity level filter of this logger instance to the specified level.
+    /// </summary>
+    /// <param name="level">The level for which allow loggig.</param>
+    public void SetSeverityFilter(SeverityLevel level)
+    {
+      levelFilter = level;
     }
 
     private static void CheckParamArrayLength<T>(T[] kvpairs)

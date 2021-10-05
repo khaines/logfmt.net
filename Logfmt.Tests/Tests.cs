@@ -180,5 +180,30 @@ namespace Logfmt.Tests
       Assert.Contains("color=blue", output);
       Assert.Contains("country=\"United States\"", output);
     }
+
+    /// <summary>
+    /// Tests the severity filter so that only Info and above messages are logged.
+    /// </summary>
+    [Fact]
+    public void TestInfoSeverityFilter()
+    {
+      var outputStream = new MemoryStream();
+      var logger = new Logger(outputStream, SeverityLevel.Info);
+
+      // this entry should be filtered out.
+      logger.Debug("This is a debug line", "color", "blue", "country", "United States");
+
+      // write a log entry
+      logger.Info("hello logs!", "color", "blue", "country", "United States");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+
+      var output = reader.ReadLine();
+
+      Assert.Contains("msg=\"hello logs!\"", output);
+      Assert.Contains("color=blue", output);
+      Assert.Contains("country=\"United States\"", output);
+    }
   }
 }
