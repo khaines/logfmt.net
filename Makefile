@@ -1,13 +1,13 @@
 all: clean restore build test
 
 clean:
-	dotnet clean logfmt/
+	dotnet clean Logfmt/
 	rm -f *.nupkg
 restore:
-	dotnet restore logfmt/
+	dotnet restore Logfmt/
 build:	
-	dotnet build logfmt/
+	dotnet build Logfmt/
 test:
-	dotnet test logfmt_tests/
+	dotnet test Logfmt.Tests/
 pack:
-	dotnet pack -o ../ logfmt/
+	dotnet pack -o ../ Logfmt/

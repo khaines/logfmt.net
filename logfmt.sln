@@ -1,8 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "logfmt", "logfmt\logfmt.csproj", "{4D2B0E64-2774-4207-969E-3209C9595B64}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logfmt", "Logfmt\Logfmt.csproj", "{4D2B0E64-2774-4207-969E-3209C9595B64}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "logfmt_tests", "logfmt_tests\logfmt_tests.csproj", "{08E6A9C5-2303-4945-AA0F-92DB1A2495C2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logfmt.Tests", "Logfmt.Tests\Logfmt.Tests.csproj", "{08E6A9C5-2303-4945-AA0F-92DB1A2495C2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

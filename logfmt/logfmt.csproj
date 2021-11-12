@@ -18,11 +18,29 @@
       - Added support for default data pairs to be included on every log output.
       - Output of log data to console (default) or specified stream.
       - Severity levels (DEBUG, INFO, WARN, ERROR).
-      - Data properties on logging methods as KeyValuePairs.</PackageReleaseNotes>
+      - Data properties on logging methods as KeyValuePairs.
+      </PackageReleaseNotes>
+      <LangVersion>9</LangVersion>
+      <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
+      <EnableNETAnalyzers>true</EnableNETAnalyzers>
+      <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+      <CodeAnalysisRuleSet>../stylecop.ruleset</CodeAnalysisRuleSet>
+      <GenerateDocumentationFile>true</GenerateDocumentationFile>
     </PropertyGroup>
 
     <ItemGroup>
       <None Remove="logfmt.nuspec" />
+      <PackageReference Include="Microsoft.Extensions.Logging" Version="5.0.0" />
+      <FrameworkReference Include="Microsoft.AspNetCore.App" />
+      <PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      </PackageReference>     
     </ItemGroup>
 
+    <ItemGroup>
+       <AdditionalFiles Include="../stylecop.json" />
+    </ItemGroup>
+
+    
 </Project>
