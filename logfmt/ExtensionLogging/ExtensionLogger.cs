@@ -45,27 +45,30 @@ namespace Logfmt.ExtensionLogging
         return;
       }
 
-      var properties = new List<KeyValuePair<string, string>>();
+      var props = new Dictionary<string, string>();
       if (state is IEnumerable<KeyValuePair<string, object>> stateProperties)
       {
         // add properties from the state object if it was a collection of pairs
-        properties.AddRange(stateProperties.Select(kv => new KeyValuePair<string, string>(kv.Key, kv.Value.ToString())));
+        foreach (var prop in stateProperties)
+        {
+          props[prop.Key] = prop.Value.ToString();
+        }
       }
 
       // create a message field if there is a formatter defined
       if (formatter != null)
       {
-        properties.Add(new KeyValuePair<string, string>("msg", formatter(state, exception)));
+        props["msg"] = formatter(state, exception);
       }
 
       // event id
       if (eventId.Id != 0 || !string.IsNullOrWhiteSpace(eventId.Name))
       {
-        properties.Add(new KeyValuePair<string, string>("event_id", eventId.Id.ToString(CultureInfo.InvariantCulture)));
-        properties.Add(new KeyValuePair<string, string>("event_name", eventId.Id.ToString(CultureInfo.InvariantCulture)));
+        props["event_id"] = eventId.Id.ToString(CultureInfo.InvariantCulture);
+        props["event_name"] = eventId.Id.ToString(CultureInfo.InvariantCulture);
       }
 
-      logger.Log(sevLevel, properties.ToArray());
+      logger.Log(sevLevel, props.ToArray());
     }
   }
 }
