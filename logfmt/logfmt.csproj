@@ -3,7 +3,7 @@
     <PropertyGroup>
         <TargetFramework>net5.0</TargetFramework>
         <AssemblyName>logfmt.net</AssemblyName>
-        <PackageVersion>0.0.3-alpha</PackageVersion>
+        <PackageVersion>0.0.4-alpha</PackageVersion>
         <Title>logfmt.net</Title>
         <Authors>Ken Haines</Authors>
         <Description>A lightweight logfmt logging library for .net applications</Description>
@@ -19,6 +19,7 @@
       - Output of log data to console (default) or specified stream.
       - Severity levels (DEBUG, INFO, WARN, ERROR).
       - Data properties on logging methods as KeyValuePairs.
+      - Added support for Microsoft.Extensions.Logging interfaces.
       </PackageReleaseNotes>
       <LangVersion>9</LangVersion>
       <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
