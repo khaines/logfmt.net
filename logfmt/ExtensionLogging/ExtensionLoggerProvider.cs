@@ -3,35 +3,59 @@
 
 namespace Logfmt.ExtensionLogging
 {
-  using Microsoft.Extensions.Logging;
-
-  /// <summary>
-  /// Extension provider implementing the <see cref="Microsoft.Extensions.Logging.ILoggerProvider" /> interface.
-  /// </summary>
-  public sealed class ExtensionLoggerProvider : ILoggerProvider
-  {
-    private const string Category = "category";
-    private readonly Logger logger;
+    using System;
+    using System.Collections.Concurrent;
+    using Microsoft.Extensions.Logging;
+    using Microsoft.Extensions.Options;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="ExtensionLoggerProvider"/> class.
+    /// Extension provider implementing the <see cref="Microsoft.Extensions.Logging.ILoggerProvider" /> interface.
     /// </summary>
-    /// <param name="baseLogger">The <see cref="Logfmt.Logger" /> instance to use for generating new instances from.</param>
-    public ExtensionLoggerProvider(Logger baseLogger)
+    public sealed class ExtensionLoggerProvider : ILoggerProvider
     {
-      logger = baseLogger;
-    }
+        private const string Category = "category";
+        private readonly IDisposable onChangeToken;
+        private readonly ConcurrentDictionary<string, ExtensionLogger> loggers = new (StringComparer.OrdinalIgnoreCase);
+        private ExtensionLoggerConfiguration currentConfig;
 
-    /// <inheritdoc/>
-    public ILogger CreateLogger(string categoryName)
-    {
-      return new ExtensionLogger(logger.WithData(Category, categoryName));
-    }
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ExtensionLoggerProvider"/> class.
+        /// </summary>
+        /// <param name="config">The <see cref="Logfmt.ExtensionLogging.ExtensionLoggerConfiguration" /> logging configuration.</param>
+        public ExtensionLoggerProvider(IOptionsMonitor<ExtensionLoggerConfiguration> config)
+        {
+            currentConfig = config.CurrentValue;
+            onChangeToken = config.OnChange(updatedConfig => currentConfig = updatedConfig);
+        }
 
-    /// <inheritdoc/>
-    public void Dispose()
-    {
-      // noop
+        /// <inheritdoc/>
+        public ILogger CreateLogger(string categoryName)
+        {
+            Logger newLogger = null;
+            if (currentConfig.LogLevel.ContainsKey(categoryName))
+            {
+                newLogger = new Logger(currentConfig.LogLevel[categoryName].ToSeverityLevel()).WithData(Category, categoryName);
+            }
+            else if (currentConfig.LogLevel.ContainsKey("Default"))
+            {
+                newLogger = new Logger(currentConfig.LogLevel["Default"].ToSeverityLevel()).WithData(Category, categoryName);
+            }
+            else
+            {
+                newLogger = new Logger(SeverityLevel.Off);
+            }
+
+            return loggers.GetOrAdd(categoryName, new ExtensionLogger(newLogger, GetCurrentConfig, categoryName));
+        }
+
+        /// <inheritdoc/>
+        public void Dispose()
+        {
+            // noop
+            loggers.Clear();
+            onChangeToken.Dispose();
+        }
+
+        private ExtensionLoggerConfiguration GetCurrentConfig() => currentConfig;
     }
-  }
 }
