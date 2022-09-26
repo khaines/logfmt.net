@@ -205,5 +205,25 @@ namespace Logfmt.Tests
       Assert.Contains("color=blue", output);
       Assert.Contains("country=\"United States\"", output);
     }
+
+    /// <summary>
+    /// Testing debug output mode with default fields.
+    /// </summary>
+    [Fact]
+    public void LogDebugOutputWithDefaultFieldsTest()
+    {
+        var outputStream = new MemoryStream();
+        var logger = new Logger(outputStream, SeverityLevel.Debug).WithData(new KeyValuePair<string, string>("module", "foo"));
+
+        // write a log entry
+        logger.Debug(msg: "hello logs!");
+
+        outputStream.Seek(0, SeekOrigin.Begin);
+        var reader = new StreamReader(outputStream);
+
+        var output = reader.ReadLine();
+
+        Assert.Contains("level=debug msg=\"hello logs!\" module=foo", output);
+    }
   }
 }

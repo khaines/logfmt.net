@@ -70,7 +70,7 @@ namespace Logfmt
     /// <returns>A new <see cref="Logfmt.Logger"/> instance.</returns>
     public Logger WithData(params KeyValuePair<string, string>[] kvpairs)
     {
-      var newLogger = new Logger(outputStream)
+      var newLogger = new Logger(outputStream, this.levelFilter)
       {
         includedData = includedData,
       };
