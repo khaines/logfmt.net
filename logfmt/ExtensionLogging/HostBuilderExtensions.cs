@@ -3,38 +3,45 @@
 
 namespace Logfmt.ExtensionLogging
 {
-  using System;
-  using Microsoft.Extensions.DependencyInjection;
-  using Microsoft.Extensions.Hosting;
-  using Microsoft.Extensions.Logging;
+    using System;
+    using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.Hosting;
+    using Microsoft.Extensions.Logging;
+    using Microsoft.Extensions.Logging.Configuration;
 
-  /// <summary>
-  /// Extension class for adding helper methods to instances of IHostBuilder.
-  /// </summary>
-  public static class HostBuilderExtensions
-  {
     /// <summary>
-    /// Adds the Logfmt.net's extension logger provider to the IHostBuilder's service collection.
+    /// Extension class for adding helper methods to instances of IHostBuilder.
     /// </summary>
-    /// <param name="builder">The <see cref="IHostBuilder"/> instance.</param>
-    /// <param name="logger">An optional <see cref="Logger"/> instance to use. A default instance will be created if not provided.</param>
-    /// <returns>The modified <see cref="IHostBuilder"/> instance.</returns>
-    public static IHostBuilder UseLogfmtLogging(
-        this IHostBuilder builder,
-        Logger logger = null)
+    public static class HostBuilderExtensions
     {
-      if (builder == null)
-      {
-        throw new ArgumentNullException(nameof(builder));
-      }
+        /// <summary>
+        /// Adds the Logfmt.net's extension logger provider to the IHostBuilder's service collection.
+        /// </summary>
+        /// <param name="builder">The <see cref="IHostBuilder"/> instance.</param>
+        /// <param name="configuration">The <see cref="Logfmt.ExtensionLogging.ExtensionLoggerConfiguration"/> used to determine logging levels.</param>
+        /// <returns>The modified <see cref="IHostBuilder"/> instance.</returns>
+        public static IHostBuilder UseLogfmtLogging(
+            this IHostBuilder builder,
+            Action<ExtensionLoggerConfiguration> configuration)
+        {
+            if (builder == null)
+            {
+                throw new ArgumentNullException(nameof(builder));
+            }
 
-      builder.ConfigureServices(collection =>
-      {
-        var provider = new ExtensionLoggerProvider(logger ?? new Logger());
-        collection.AddSingleton<ILoggerFactory>(services => new ExtensionLoggerFactory(provider));
-      });
+            builder.ConfigureLogging(logBuilder =>
+            {
+                logBuilder.ClearProviders().AddConfiguration();
 
-      return builder;
+                logBuilder.Services.AddSingleton<ILoggerProvider, ExtensionLoggerProvider>();
+
+                LoggerProviderOptions.RegisterProviderOptions
+                    <ExtensionLoggerConfiguration, ExtensionLoggerProvider>(logBuilder.Services);
+
+                logBuilder.Services.Configure(configuration);
+            });
+
+            return builder;
+        }
     }
-  }
 }
