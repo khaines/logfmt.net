@@ -1,20 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net5.0</TargetFramework>
+        <TargetFrameworks>net6.0;net7.0</TargetFrameworks>
         <AssemblyName>logfmt.net</AssemblyName>
-        <PackageVersion>0.0.4-alpha</PackageVersion>
+        <PackageVersion>0.0.5-alpha</PackageVersion>
         <Title>logfmt.net</Title>
         <Authors>Ken Haines</Authors>
         <Description>A lightweight logfmt logging library for .net applications</Description>
-        <Copyright>Copyright 2021</Copyright>
+        <Copyright>Copyright 2023</Copyright>
         <PackageProjectUrl>https://github.com/khaines/logfmt.net</PackageProjectUrl>
         <PackageLicenseUrl>https://github.com/khaines/logfmt.net/blob/master/LICENSE</PackageLicenseUrl>
         <RepositoryUrl>https://github.com/khaines/logfmt.net</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <PackageTags>logging logfmt</PackageTags>
         <PackageReleaseNotes> 
-      - Now targeting net5.0    
+      - Now targeting net6.0    
       - Added support for default data pairs to be included on every log output.
       - Output of log data to console (default) or specified stream.
       - Severity levels (DEBUG, INFO, WARN, ERROR).
@@ -31,7 +31,7 @@
 
     <ItemGroup>
       <None Remove="logfmt.nuspec" />
-      <PackageReference Include="Microsoft.Extensions.Logging" Version="5.0.0" />
+      <PackageReference Include="Microsoft.Extensions.Logging" Version="7.0.0" />
       <FrameworkReference Include="Microsoft.AspNetCore.App" />
       <PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
         <PrivateAssets>all</PrivateAssets>

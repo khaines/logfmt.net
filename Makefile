@@ -1,4 +1,4 @@
-all: clean restore build test
+all: restore clean build test
 
 clean:
 	dotnet clean Logfmt/

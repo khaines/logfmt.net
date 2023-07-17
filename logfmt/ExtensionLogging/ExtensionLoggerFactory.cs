@@ -6,13 +6,13 @@ namespace Logfmt.ExtensionLogging
   using Microsoft.Extensions.Logging;
 
   /// <summary>
-  /// Extension logger factory for creating new instaces of <see cref="Microsoft.Extensions.Logging.ILogger" />
+  /// Extension logger factory for creating new instances of <see cref="Microsoft.Extensions.Logging.ILogger" />
   /// from the <see cref="Logfmt.ExtensionLogging.ExtensionLoggerProvider" />.
   /// </summary>
   public sealed class ExtensionLoggerFactory : ILoggerFactory
   {
-    private readonly ExtensionLoggerProvider loggerProvider;
-    private readonly ILogger logger;
+    private readonly ExtensionLoggerProvider _loggerProvider;
+    private readonly ILogger _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ExtensionLoggerFactory"/> class.
@@ -20,8 +20,8 @@ namespace Logfmt.ExtensionLogging
     /// <param name="loggerProvider">Backing provider which creates new logger instances.</param>
     public ExtensionLoggerFactory(ExtensionLoggerProvider loggerProvider)
     {
-      this.loggerProvider = loggerProvider;
-      logger = this.loggerProvider.CreateLogger("ExtensionLoggerFactory");
+      this._loggerProvider = loggerProvider;
+      _logger = this._loggerProvider.CreateLogger("ExtensionLoggerFactory");
     }
 
     /// <inheritdoc/>
@@ -29,13 +29,14 @@ namespace Logfmt.ExtensionLogging
     {
       // currently noop
       // TODO: decide what to do with multiple providers
-      logger.LogWarning("Ignoring added provider", "provider", provider);
+      var msg = LoggerMessage.Define<ILoggerProvider>(LogLevel.Warning, new EventId(0, "AddProvider"), "Ignoring added provider: {Provider}");
+      msg(_logger, provider, null);
     }
 
     /// <inheritdoc/>
-    public ILogger CreateLogger(string category)
+    public ILogger CreateLogger(string categoryName)
     {
-      return loggerProvider.CreateLogger(category);
+      return _loggerProvider.CreateLogger(categoryName);
     }
 
     /// <inheritdoc/>

@@ -57,7 +57,7 @@ namespace Logfmt.Tests
     }
 
     /// <summary>
-    /// Testing for excaping of invalid characters in a "key" parameter.
+    /// Testing for escaping of invalid characters in a "key" parameter.
     /// </summary>
     [Fact]
     public void TestInvalidKeyEscaping()
@@ -212,18 +212,18 @@ namespace Logfmt.Tests
     [Fact]
     public void LogDebugOutputWithDefaultFieldsTest()
     {
-        var outputStream = new MemoryStream();
-        var logger = new Logger(outputStream, SeverityLevel.Debug).WithData(new KeyValuePair<string, string>("module", "foo"));
+      var outputStream = new MemoryStream();
+      var logger = new Logger(outputStream, SeverityLevel.Debug).WithData(new KeyValuePair<string, string>("module", "foo"));
 
-        // write a log entry
-        logger.Debug(msg: "hello logs!");
+      // write a log entry
+      logger.Debug(msg: "hello logs!");
 
-        outputStream.Seek(0, SeekOrigin.Begin);
-        var reader = new StreamReader(outputStream);
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
 
-        var output = reader.ReadLine();
+      var output = reader.ReadLine();
 
-        Assert.Contains("level=debug msg=\"hello logs!\" module=foo", output);
+      Assert.Contains("level=debug msg=\"hello logs!\" module=foo", output);
     }
   }
 }

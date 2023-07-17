@@ -3,17 +3,17 @@
 
 namespace Logfmt.ExtensionLogging
 {
-    using System.Collections.Generic;
-    using Microsoft.Extensions.Logging;
+  using System.Collections.Generic;
+  using Microsoft.Extensions.Logging;
 
+  /// <summary>
+  /// The configuration object used by the logger.
+  /// </summary>
+  public class ExtensionLoggerConfiguration
+  {
     /// <summary>
-    /// The configuration object used by the logger.
+    /// Gets logging level by category.
     /// </summary>
-    public class ExtensionLoggerConfiguration
-    {
-        /// <summary>
-        /// Gets or sets logging level by category.
-        /// </summary>
-        public Dictionary<string, LogLevel> LogLevel { get; set; }
-    }
+    public Dictionary<string, LogLevel> LogLevel { get; }
+  }
 }

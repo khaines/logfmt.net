@@ -5,6 +5,7 @@ namespace Logfmt
 {
   using System;
   using System.Collections.Generic;
+  using System.Globalization;
   using System.IO;
   using System.Linq;
   using System.Reflection.Metadata.Ecma335;
@@ -15,20 +16,20 @@ namespace Logfmt
   /// <summary>
   /// The logfmt logger. Outputs data to the underlying stream as a string using the `logfmt` format.
   /// </summary>
-  public class Logger
+  public sealed class Logger : IDisposable
   {
     private const string Date = "ts";
     private const string Message = "msg";
     private const string Level = "level";
-    private const string Fieldformat = "{0}={1}";
+    private const string FieldFormat = "{0}={1}";
 
     private const char Spacer = ' ';
 
     // will match spaces and other invalid characters that should not be in the key field
-    private readonly Regex keyNameFilter = new Regex("([^a-z0-9A-Z_])+", RegexOptions.IgnoreCase & RegexOptions.Compiled);
+    private readonly Regex keyNameFilter = new ("([^a-z0-9A-Z_])+", RegexOptions.IgnoreCase & RegexOptions.Compiled);
 
-    private readonly TextWriter output;
-    private readonly Stream outputStream;
+    private readonly TextWriter _output;
+    private readonly Stream _outputStream;
     private List<KeyValuePair<string, string>> includedData;
 
     private SeverityLevel levelFilter;
@@ -58,9 +59,16 @@ namespace Logfmt
     public Logger(Stream stream, SeverityLevel levelFilter = SeverityLevel.Info)
     {
       this.levelFilter = levelFilter;
-      outputStream = stream;
-      output = new StreamWriter(outputStream);
+      _outputStream = stream;
+      _output = new StreamWriter(_outputStream);
       includedData = new List<KeyValuePair<string, string>>();
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+      _output?.Dispose();
+      _outputStream?.Dispose();
     }
 
     /// <summary>
@@ -70,7 +78,7 @@ namespace Logfmt
     /// <returns>A new <see cref="Logfmt.Logger"/> instance.</returns>
     public Logger WithData(params KeyValuePair<string, string>[] kvpairs)
     {
-      var newLogger = new Logger(outputStream, this.levelFilter)
+      var newLogger = new Logger(_outputStream, this.levelFilter)
       {
         includedData = includedData,
       };
@@ -86,6 +94,7 @@ namespace Logfmt
     /// <returns>A new <see cref="Logfmt.Logger"/> instance.</returns>
     public Logger WithData(params string[] kvpairs)
     {
+      ArgumentNullException.ThrowIfNull(kvpairs);
       CheckParamArrayLength(kvpairs);
       var pairs = new List<KeyValuePair<string, string>>();
       for (var i = 0; i < kvpairs.Length; i += 2)
@@ -111,11 +120,11 @@ namespace Logfmt
       var buffer = new StringBuilder();
 
       // Date in ISO8601 format
-      buffer.AppendFormat(Fieldformat, Date, DateTime.UtcNow.ToString("o"));
+      buffer.AppendFormat(CultureInfo.InvariantCulture, FieldFormat, Date, DateTime.UtcNow.ToString("o"));
       buffer.Append(Spacer);
 
       // severity level
-      buffer.AppendFormat(Fieldformat, Level, severity.ToLower());
+      buffer.AppendFormat(CultureInfo.InvariantCulture, FieldFormat, Level, severity.ToLower());
 
       // parameter pairs
       foreach (var pair in kvpairs.Where(kv => !string.IsNullOrWhiteSpace(kv.Key)))
@@ -123,7 +132,7 @@ namespace Logfmt
         buffer.Append(Spacer);
 
         // data pair
-        buffer.AppendFormat(Fieldformat, PrepareKeyField(pair.Key), PrepareValueField(pair.Value));
+        buffer.AppendFormat(CultureInfo.InvariantCulture, FieldFormat, PrepareKeyField(pair.Key), PrepareValueField(pair.Value));
       }
 
       // default data to be included
@@ -132,13 +141,13 @@ namespace Logfmt
         buffer.Append(Spacer);
 
         // data pair
-        buffer.AppendFormat(Fieldformat, PrepareKeyField(pair.Key), PrepareValueField(pair.Value));
+        buffer.AppendFormat(CultureInfo.InvariantCulture, FieldFormat, PrepareKeyField(pair.Key), PrepareValueField(pair.Value));
       }
 
-      if (outputStream.CanWrite)
+      if (_outputStream.CanWrite)
       {
-        output.WriteLine(buffer.ToString());
-        output.Flush();
+        _output.WriteLine(buffer.ToString());
+        _output.Flush();
       }
     }
 
@@ -154,6 +163,9 @@ namespace Logfmt
       {
         return;
       }
+
+      ArgumentNullException.ThrowIfNull(msg);
+      ArgumentNullException.ThrowIfNull(kvpairs);
 
       CheckParamArrayLength(kvpairs);
 
@@ -182,7 +194,7 @@ namespace Logfmt
     /// <summary>
     /// Changes the severity level filter of this logger instance to the specified level.
     /// </summary>
-    /// <param name="level">The level for which allow loggig.</param>
+    /// <param name="level">The level for which allow logging.</param>
     public void SetSeverityFilter(SeverityLevel level)
     {
       levelFilter = level;
@@ -198,9 +210,9 @@ namespace Logfmt
 
     private static string PrepareValueField(string value)
     {
-      if (value.Contains(" "))
+      if (value.Contains(' ', StringComparison.InvariantCulture))
       {
-        value = value.Replace("\"", "\\\"");
+        value = value.Replace("\"", "\\\"", StringComparison.InvariantCulture);
         value = "\"" + value + "\"";
       }
 
