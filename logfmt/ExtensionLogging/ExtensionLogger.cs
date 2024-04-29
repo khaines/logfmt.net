@@ -78,7 +78,7 @@ namespace Logfmt.ExtensionLogging
             if (eventId.Id != 0 || !string.IsNullOrWhiteSpace(eventId.Name))
             {
                 props["event_id"] = eventId.Id.ToString(CultureInfo.InvariantCulture);
-                props["event_name"] = eventId.Id.ToString(CultureInfo.InvariantCulture);
+                props["event_name"] = eventId.Name.ToString(CultureInfo.InvariantCulture);
             }
 
             logger.Log(sevLevel, props.ToArray());
