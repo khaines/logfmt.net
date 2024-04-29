@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>net8.0</TargetFrameworks>
+        <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
         <AssemblyName>logfmt.net</AssemblyName>
         <PackageVersion>0.1.0-alpha</PackageVersion>
         <Title>logfmt.net</Title>
@@ -14,7 +14,7 @@
         <RepositoryType>git</RepositoryType>
         <PackageTags>logging logfmt</PackageTags>
         <PackageReleaseNotes> 
-      - Now targeting net8.0    
+      - Now supports net8.0    
       - Added support for default data pairs to be included on every log output.
       - Output of log data to console (default) or specified stream.
       - Severity levels (DEBUG, INFO, WARN, ERROR).
