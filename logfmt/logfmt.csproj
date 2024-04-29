@@ -6,7 +6,7 @@
         <PackageVersion>0.1.0-alpha</PackageVersion>
         <Title>logfmt.net</Title>
         <Authors>Ken Haines</Authors>
-        <Description>A lightweight logfmt logging library for .net applications</Description>
+        <Description>A Simple logfmt library for .net applications</Description>
         <Copyright>Copyright 2024</Copyright>
         <PackageProjectUrl>https://github.com/khaines/logfmt.net</PackageProjectUrl>
         <PackageLicenseUrl>https://github.com/khaines/logfmt.net/blob/master/LICENSE</PackageLicenseUrl>
