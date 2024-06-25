@@ -226,5 +226,28 @@ namespace Logfmt.Tests
 
       Assert.Contains("level=debug msg=\"hello logs!\" module=foo", output);
     }
+
+    [Fact]
+    public void EscapeLineBreaksAndTabsInOutputTest()
+    {
+      var outputStream = new MemoryStream();
+      var logger = new Logger(outputStream, SeverityLevel.Info);
+
+      var jsonMsg = @"{
+          'foo':'bar',
+          'test':'true'
+      }";
+
+      logger.Info(msg: jsonMsg);
+      
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+
+      var output = reader.ReadLine();
+
+      var expected = "level=info msg=\"{\\n          'foo':'bar',\\n          'test':'true'\\n      }\"";
+      Assert.Contains(expected, output);
+      
+    }
   }
 }

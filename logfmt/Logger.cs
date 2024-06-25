@@ -213,6 +213,8 @@ namespace Logfmt
       if (value.Contains(' ', StringComparison.InvariantCulture))
       {
         value = value.Replace("\"", "\\\"", StringComparison.InvariantCulture);
+        value = value.Replace("\r", "\\r");
+        value = value.Replace("\n", "\\n");
         value = "\"" + value + "\"";
       }
 

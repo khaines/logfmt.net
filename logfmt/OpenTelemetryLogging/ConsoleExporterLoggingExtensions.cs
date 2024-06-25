@@ -1,11 +1,11 @@
-namespace Logfmt.OpenTelemetry
+namespace Logfmt.OpenTelemetryLogging
 {
     using System;
-    using global::OpenTelemetry;
-    using global::OpenTelemetry.Logs;
+    using OpenTelemetry;
+    using OpenTelemetry.Logs;
     public static class ConsoleExporterLoggingExtensions
     {
-        public static OpenTelemetryLoggerOptions AddConsoleExporter(this OpenTelemetryLoggerOptions loggerOptions)
+        public static OpenTelemetryLoggerOptions AddLogfmtConsoleExporter(this OpenTelemetryLoggerOptions loggerOptions)
         {
             ArgumentNullException.ThrowIfNull(loggerOptions);
 #pragma warning disable CA2000

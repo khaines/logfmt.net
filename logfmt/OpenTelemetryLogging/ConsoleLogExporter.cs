@@ -1,6 +1,6 @@
 using OpenTelemetry;
 using OpenTelemetry.Logs;
-namespace Logfmt.OpenTelemetry
+namespace Logfmt.OpenTelemetryLogging
 {
   using System.Collections.Generic;
   using System.Globalization;
