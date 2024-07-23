@@ -1,5 +1,5 @@
-using OpenTelemetry;
-using OpenTelemetry.Logs;
+// Copyright (c) Ken Haines. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
 namespace Logfmt.OpenTelemetryLogging
 {
   using System.Collections.Generic;
@@ -8,6 +8,8 @@ namespace Logfmt.OpenTelemetryLogging
   using System.Runtime.CompilerServices;
   using Microsoft.Extensions.Logging;
   using Logfmt.ExtensionLogging;
+  using OpenTelemetry;
+  using OpenTelemetry.Logs;
 
   public class ConsoleLogExporter : BaseExporter<LogRecord>
   {

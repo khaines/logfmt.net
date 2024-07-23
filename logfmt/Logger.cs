@@ -26,7 +26,7 @@ namespace Logfmt
     private const char Spacer = ' ';
 
     // will match spaces and other invalid characters that should not be in the key field
-    private readonly Regex keyNameFilter = new ("([^a-z0-9A-Z_])+", RegexOptions.IgnoreCase & RegexOptions.Compiled);
+    private readonly Regex keyNameFilter = new("([^a-z0-9A-Z_])+", RegexOptions.IgnoreCase & RegexOptions.Compiled);
 
     private readonly TextWriter _output;
     private readonly Stream _outputStream;
@@ -210,13 +210,10 @@ namespace Logfmt
 
     private static string PrepareValueField(string value)
     {
-      if (value.Contains(' ', StringComparison.InvariantCulture))
-      {
-        value = value.Replace("\"", "\\\"", StringComparison.InvariantCulture);
-        value = value.Replace("\r", "\\r");
-        value = value.Replace("\n", "\\n");
-        value = "\"" + value + "\"";
-      }
+      value = value.Replace("\"", "\\\"", StringComparison.InvariantCulture);
+      value = value.Replace("\r", "\\r", StringComparison.InvariantCulture);
+      value = value.Replace("\n", "\\n", StringComparison.InvariantCulture);
+      value = "\"" + value + "\"";
 
       return value;
     }
