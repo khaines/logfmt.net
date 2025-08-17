@@ -132,7 +132,7 @@ namespace Logfmt
         buffer.Append(Spacer);
 
         // data pair
-        buffer.AppendFormat(CultureInfo.InvariantCulture, FieldFormat, PrepareKeyField(pair.Key), PrepareValueField(pair.Value));
+        buffer.AppendFormat(CultureInfo.InvariantCulture, FieldFormat, PrepareKeyField(pair.Key), PrepareValueField(pair.Key, pair.Value));
       }
 
       // default data to be included
@@ -141,7 +141,7 @@ namespace Logfmt
         buffer.Append(Spacer);
 
         // data pair
-        buffer.AppendFormat(CultureInfo.InvariantCulture, FieldFormat, PrepareKeyField(pair.Key), PrepareValueField(pair.Value));
+        buffer.AppendFormat(CultureInfo.InvariantCulture, FieldFormat, PrepareKeyField(pair.Key), PrepareValueField(pair.Key, pair.Value));
       }
 
       if (_outputStream.CanWrite)
@@ -208,12 +208,22 @@ namespace Logfmt
       }
     }
 
-    private static string PrepareValueField(string value)
+    private static string PrepareValueField(string key, string value)
     {
+      // Handle escaping of special characters
       value = value.Replace("\"", "\\\"", StringComparison.InvariantCulture);
       value = value.Replace("\r", "\\r", StringComparison.InvariantCulture);
       value = value.Replace("\n", "\\n", StringComparison.InvariantCulture);
-      value = "\"" + value + "\"";
+
+      // Always quote messages, or quote other values if they contain spaces or special characters
+      if (key == Message ||
+          value.Contains(' ', StringComparison.InvariantCulture) ||
+          value.Contains('\t', StringComparison.InvariantCulture) ||
+          value.Contains('\r', StringComparison.InvariantCulture) ||
+          value.Contains('\n', StringComparison.InvariantCulture))
+      {
+        value = "\"" + value + "\"";
+      }
 
       return value;
     }
