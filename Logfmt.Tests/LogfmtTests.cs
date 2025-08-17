@@ -241,7 +241,7 @@ namespace Logfmt.Tests
       logger.Info(msg: jsonMsg);
       
       outputStream.Seek(0, SeekOrigin.Begin);
-      var reader = new StreamReader(outputStream);
+      using var reader = new StreamReader(outputStream);
 
       var output = reader.ReadLine();
 
