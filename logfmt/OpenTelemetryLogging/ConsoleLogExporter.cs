@@ -88,7 +88,7 @@ namespace Logfmt.OpenTelemetryLogging
       {
         foreach (var a in record.Attributes)
         {
-          attributes[a.Key] = a.Value.ToString();
+          attributes[a.Key] = a.Value?.ToString() ?? "null";
         }
       }
 
