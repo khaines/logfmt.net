@@ -71,7 +71,10 @@ namespace Logfmt.OpenTelemetryLogging
       if (record.EventId.Id != 0 || !string.IsNullOrWhiteSpace(record.EventId.Name))
       {
         attributes["event_id"] = record.EventId.Id.ToString(CultureInfo.InvariantCulture);
-        attributes["event_name"] = record.EventId.Name.ToString(CultureInfo.InvariantCulture);
+        if (record.EventId.Name != null)
+        {
+          attributes["event_name"] = record.EventId.Name.ToString(CultureInfo.InvariantCulture);
+        }
       }
 
       if (record.TraceId != default)
