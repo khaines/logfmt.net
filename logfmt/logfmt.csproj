@@ -1,25 +1,28 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>net6.0;net7.0</TargetFrameworks>
+        <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
         <AssemblyName>logfmt.net</AssemblyName>
-        <PackageVersion>0.0.5-alpha</PackageVersion>
+        <PackageVersion>0.2.0</PackageVersion>
         <Title>logfmt.net</Title>
         <Authors>Ken Haines</Authors>
-        <Description>A lightweight logfmt logging library for .net applications</Description>
-        <Copyright>Copyright 2023</Copyright>
+        <Description>A Simple logfmt library for .net applications</Description>
+        <Copyright>Copyright 2025</Copyright>
         <PackageProjectUrl>https://github.com/khaines/logfmt.net</PackageProjectUrl>
-        <PackageLicenseUrl>https://github.com/khaines/logfmt.net/blob/master/LICENSE</PackageLicenseUrl>
+        <PackageLicenseUrl>https://github.com/khaines/logfmt.net/blob/main/LICENSE</PackageLicenseUrl>
         <RepositoryUrl>https://github.com/khaines/logfmt.net</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <PackageTags>logging logfmt</PackageTags>
         <PackageReleaseNotes> 
-      - Now targeting net6.0    
+      - Now supports net8.0    
       - Added support for default data pairs to be included on every log output.
       - Output of log data to console (default) or specified stream.
       - Severity levels (DEBUG, INFO, WARN, ERROR).
       - Data properties on logging methods as KeyValuePairs.
       - Added support for Microsoft.Extensions.Logging interfaces.
+      - Added support for OpenTelemetry Logging.
+      - Added handling of values containing line breaks.
+      - Added OpenTelemetry support for logfmt format.
       </PackageReleaseNotes>
       <LangVersion>9</LangVersion>
       <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
@@ -33,6 +36,7 @@
       <None Remove="logfmt.nuspec" />
       <PackageReference Include="Microsoft.Extensions.Logging" Version="7.0.0" />
       <FrameworkReference Include="Microsoft.AspNetCore.App" />
+      <PackageReference Include="OpenTelemetry" Version="1.6.0" />
       <PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>

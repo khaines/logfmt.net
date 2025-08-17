@@ -14,6 +14,6 @@ namespace Logfmt.ExtensionLogging
     /// <summary>
     /// Gets logging level by category.
     /// </summary>
-    public Dictionary<string, LogLevel> LogLevel { get; }
+    public Dictionary<string, LogLevel> LogLevel { get; } = new Dictionary<string, LogLevel>();
   }
 }
