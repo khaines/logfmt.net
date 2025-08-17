@@ -210,6 +210,12 @@ namespace Logfmt
 
     private static string PrepareValueField(string key, string value)
     {
+      // Handle null values
+      if (value == null)
+      {
+        return "null";
+      }
+
       // Handle escaping of special characters
       value = value.Replace("\"", "\\\"", StringComparison.InvariantCulture);
       value = value.Replace("\r", "\\r", StringComparison.InvariantCulture);
