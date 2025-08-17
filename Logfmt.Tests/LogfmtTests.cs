@@ -231,7 +231,7 @@ namespace Logfmt.Tests
     public void EscapeLineBreaksAndTabsInOutputTest()
     {
       var outputStream = new MemoryStream();
-      var logger = new Logger(outputStream, SeverityLevel.Info);
+      using var logger = new Logger(outputStream, SeverityLevel.Info);
 
       var jsonMsg = @"{
           'foo':'bar',
