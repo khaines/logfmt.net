@@ -56,7 +56,7 @@ namespace Logfmt.OpenTelemetryLogging
     {
       var attributes = new Dictionary<string, string>();
 
-      attributes["msg"] = record.FormattedMessage ?? record.Body;
+      attributes["msg"] = record.FormattedMessage ?? record.Body ?? string.Empty;
       if (record.Exception is not null)
       {
         attributes["exception_msg"] = record.Exception.Message;
