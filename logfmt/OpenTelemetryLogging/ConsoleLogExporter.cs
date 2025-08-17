@@ -60,7 +60,7 @@ namespace Logfmt.OpenTelemetryLogging
       if (record.Exception is not null)
       {
         attributes["exception_msg"] = record.Exception.Message;
-        attributes["exception_stack"] = record.Exception.StackTrace;
+        attributes["exception_stack"] = record.Exception.StackTrace ?? string.Empty;
       }
 
       if (record.CategoryName is not null)
