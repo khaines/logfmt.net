@@ -30,7 +30,7 @@ namespace Logfmt.OpenTelemetryLogging
     {
       if (_isDisposed)
       {
-        // todo: write a warning about using a disposed exporter
+        Console.Error.WriteLine("Warning: Attempted to export logs using a disposed ConsoleLogExporter.");
         return ExportResult.Failure;
       }
 
