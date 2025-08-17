@@ -3,7 +3,7 @@
     <PropertyGroup>
         <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
         <AssemblyName>logfmt.net</AssemblyName>
-        <PackageVersion>0.1.2-alpha</PackageVersion>
+        <PackageVersion>0.2.0-alpha</PackageVersion>
         <Title>logfmt.net</Title>
         <Authors>Ken Haines</Authors>
         <Description>A Simple logfmt library for .net applications</Description>
@@ -22,6 +22,7 @@
       - Added support for Microsoft.Extensions.Logging interfaces.
       - Added support for OpenTelemetry Logging.
       - Added handling of values containing line breaks.
+      - Added OpenTelemetry support for logfmt format.
       </PackageReleaseNotes>
       <LangVersion>9</LangVersion>
       <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
