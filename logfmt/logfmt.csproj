@@ -9,7 +9,8 @@
         <Description>A Simple logfmt library for .net applications</Description>
         <Copyright>Copyright 2025</Copyright>
         <PackageProjectUrl>https://github.com/khaines/logfmt.net</PackageProjectUrl>
-        <PackageLicenseUrl>https://github.com/khaines/logfmt.net/blob/main/LICENSE</PackageLicenseUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
         <RepositoryUrl>https://github.com/khaines/logfmt.net</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <PackageTags>logging logfmt</PackageTags>
@@ -45,6 +46,10 @@
 
     <ItemGroup>
        <AdditionalFiles Include="../stylecop.json" />
+    </ItemGroup>
+
+    <ItemGroup>
+       <None Include="../README.md" Pack="true" PackagePath="\"/>
     </ItemGroup>
 
     
