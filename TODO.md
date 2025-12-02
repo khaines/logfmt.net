@@ -31,5 +31,5 @@
 
 - [ ] **Migrate to GitHub Actions**
   - Replace local `Makefile` workflows with a `.github/workflows/dotnet.yml` for automated build/test/pack.
-- [ ] **Centralize Package Management**
+- [x] **Centralize Package Management**
   - Implement `Directory.Packages.props` to manage dependency versions in one place.

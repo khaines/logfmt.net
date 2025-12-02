@@ -37,10 +37,10 @@
 
     <ItemGroup>
       <None Remove="logfmt.nuspec" />
-      <PackageReference Include="Microsoft.Extensions.Logging" Version="7.0.0" />
+      <PackageReference Include="Microsoft.Extensions.Logging" />
       <FrameworkReference Include="Microsoft.AspNetCore.App" />
-      <PackageReference Include="OpenTelemetry" Version="1.6.0" />
-      <PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
+      <PackageReference Include="OpenTelemetry" />
+      <PackageReference Include="StyleCop.Analyzers">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
       </PackageReference>     
