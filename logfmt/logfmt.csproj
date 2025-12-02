@@ -3,7 +3,7 @@
     <PropertyGroup>
         <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
         <AssemblyName>logfmt.net</AssemblyName>
-        <PackageVersion>0.2.0</PackageVersion>
+        <PackageVersion>0.3.0</PackageVersion>
         <Title>logfmt.net</Title>
         <Authors>Ken Haines</Authors>
         <Description>A Simple logfmt library for .net applications</Description>
@@ -16,8 +16,11 @@
         <PackageTags>logging logfmt</PackageTags>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
-        <PackageReleaseNotes> 
-      - Now supports net8.0    
+        <PackageReleaseNotes>
+      - Significant performance improvements (reduced allocations and increased throughput).
+      - Modernized codebase (Nullable Reference Types, File-scoped namespaces).
+      - Added benchmarks project.
+      - Now supports net8.0
       - Added support for default data pairs to be included on every log output.
       - Output of log data to console (default) or specified stream.
       - Severity levels (DEBUG, INFO, WARN, ERROR).
