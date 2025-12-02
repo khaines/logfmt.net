@@ -30,8 +30,18 @@ public class ExtensionLogger : ILogger
     /// <inheritdoc/>
     public bool IsEnabled(LogLevel logLevel)
     {
-        return (getCurrentConfig().LogLevel.ContainsKey(this.categoryName) && getCurrentConfig().LogLevel[categoryName] <= logLevel) ||
-               (getCurrentConfig().LogLevel.ContainsKey("Default") && getCurrentConfig().LogLevel["Default"] <= logLevel);
+        var config = getCurrentConfig();
+        if (config.LogLevel.TryGetValue(this.categoryName, out var categoryLevel))
+        {
+            return categoryLevel <= logLevel;
+        }
+
+        if (config.LogLevel.TryGetValue("Default", out var defaultLevel))
+        {
+            return defaultLevel <= logLevel;
+        }
+
+        return false;
     }
 
     /// <summary>

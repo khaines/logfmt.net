@@ -25,7 +25,12 @@ public sealed class ExtensionLoggerProvider : ILoggerProvider
     public ExtensionLoggerProvider(IOptionsMonitor<ExtensionLoggerConfiguration> config)
     {
         ArgumentNullException.ThrowIfNull(config, nameof(config));
-        _currentConfig = config.CurrentValue ?? new ExtensionLoggerConfiguration();
+        if (config.CurrentValue == null)
+        {
+            throw new InvalidOperationException("ExtensionLoggerConfiguration is missing or invalid. Please ensure logging configuration is provided.");
+        }
+
+        _currentConfig = config.CurrentValue;
         _onChangeToken = config.OnChange(updatedConfig => _currentConfig = updatedConfig);
     }
 
