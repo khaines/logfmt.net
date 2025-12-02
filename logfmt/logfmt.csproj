@@ -9,10 +9,13 @@
         <Description>A Simple logfmt library for .net applications</Description>
         <Copyright>Copyright 2025</Copyright>
         <PackageProjectUrl>https://github.com/khaines/logfmt.net</PackageProjectUrl>
-        <PackageLicenseUrl>https://github.com/khaines/logfmt.net/blob/main/LICENSE</PackageLicenseUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
         <RepositoryUrl>https://github.com/khaines/logfmt.net</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <PackageTags>logging logfmt</PackageTags>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
         <PackageReleaseNotes> 
       - Now supports net8.0    
       - Added support for default data pairs to be included on every log output.
@@ -24,7 +27,7 @@
       - Added handling of values containing line breaks.
       - Added OpenTelemetry support for logfmt format.
       </PackageReleaseNotes>
-      <LangVersion>9</LangVersion>
+      <LangVersion>latest</LangVersion>
       <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
       <EnableNETAnalyzers>true</EnableNETAnalyzers>
       <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>

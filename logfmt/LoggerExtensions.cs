@@ -1,16 +1,16 @@
 // Copyright (c) Ken Haines. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
-namespace Logfmt
-{
-  using System;
-  using System.Diagnostics.CodeAnalysis;
-  using System.Globalization;
+namespace Logfmt;
 
-  /// <summary>
-  /// Helper methods for use with the <see cref="Logfmt.Logger" /> class.
-  /// </summary>
-  public static class LoggerExtensions
-  {
+using System;
+using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
+
+/// <summary>
+/// Helper methods for use with the <see cref="Logfmt.Logger" /> class.
+/// </summary>
+public static class LoggerExtensions
+{
     /// <summary>
     /// Creates a log event with a severity of Information.
     /// </summary>
@@ -19,8 +19,8 @@ namespace Logfmt
     /// <param name="kvpairs">The labels and values to include.</param>
     public static void Info(this Logger logger, string msg, params string[] kvpairs)
     {
-      ArgumentNullException.ThrowIfNull(logger, nameof(logger));
-      logger.Log(SeverityLevel.Info, msg, kvpairs);
+        ArgumentNullException.ThrowIfNull(logger);
+        logger.Log(SeverityLevel.Info, msg, kvpairs);
     }
 
     /// <summary>
@@ -31,8 +31,8 @@ namespace Logfmt
     /// <param name="kvpairs">The labels and values to include.</param>
     public static void Debug(this Logger logger, string msg, params string[] kvpairs)
     {
-      ArgumentNullException.ThrowIfNull(logger, nameof(logger));
-      logger.Log(SeverityLevel.Debug, msg, kvpairs);
+        ArgumentNullException.ThrowIfNull(logger);
+        logger.Log(SeverityLevel.Debug, msg, kvpairs);
     }
 
     /// <summary>
@@ -43,8 +43,8 @@ namespace Logfmt
     /// <param name="kvpairs">The labels and values to include.</param>
     public static void Warn(this Logger logger, string msg, params string[] kvpairs)
     {
-      ArgumentNullException.ThrowIfNull(logger, nameof(logger));
-      logger.Log(SeverityLevel.Warn, msg, kvpairs);
+        ArgumentNullException.ThrowIfNull(logger);
+        logger.Log(SeverityLevel.Warn, msg, kvpairs);
     }
 
     /// <summary>
@@ -55,8 +55,8 @@ namespace Logfmt
     /// <param name="kvpairs">The labels and values to include.</param>
     public static void Error(this Logger logger, string msg, params string[] kvpairs)
     {
-      ArgumentNullException.ThrowIfNull(logger, nameof(logger));
-      logger.Log(SeverityLevel.Error, msg, kvpairs);
+        ArgumentNullException.ThrowIfNull(logger);
+        logger.Log(SeverityLevel.Error, msg, kvpairs);
     }
 
     /// <summary>
@@ -67,7 +67,6 @@ namespace Logfmt
     [SuppressMessage("Microsoft.Globalization", "CA1308:NormalizeStringsToUppercase", Justification = "Logfmt requires lowercase strings.")]
     internal static string ToLower(this SeverityLevel level)
     {
-      return level.ToString().ToLower(CultureInfo.InvariantCulture);
+        return level.ToString().ToLower(CultureInfo.InvariantCulture);
     }
-  }
 }

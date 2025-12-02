@@ -1,13 +1,13 @@
 // Copyright (c) Ken Haines. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-namespace Logfmt
+namespace Logfmt;
+
+/// <summary>
+/// Used to label log entries with a given severity.
+/// </summary>
+public enum SeverityLevel
 {
-  /// <summary>
-  /// Used to label log entries with a given severity.
-  /// </summary>
-  public enum SeverityLevel
-  {
     /// <summary>
     /// Trace severity.
     /// </summary>
@@ -42,5 +42,4 @@ namespace Logfmt
     /// Off severity. This is only used in configuration to disable output.
     /// </summary>
     Off,
-  }
 }
