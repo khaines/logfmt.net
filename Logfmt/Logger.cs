@@ -4,9 +4,7 @@
 namespace Logfmt;
 
 using System.Globalization;
-using System.Reflection.Metadata.Ecma335;
 using System.Text;
-using Microsoft.VisualBasic;
 
 /// <summary>
 /// The logfmt logger. Outputs data to the underlying stream as a string using the `logfmt` format.
@@ -83,7 +81,7 @@ public sealed class Logger : IDisposable
     {
         var newLogger = new Logger(_outputStream, this.levelFilter)
         {
-            includedData = includedData,
+            includedData = new List<KeyValuePair<string, string>>(includedData),
         };
         newLogger.includedData.AddRange(kvpairs);
 
@@ -177,9 +175,9 @@ public sealed class Logger : IDisposable
         CheckParamArrayLength(kvpairs);
 
         var pairs = new List<KeyValuePair<string, string>>
-      {
-        new KeyValuePair<string, string>(MessageKey, msg),
-      };
+        {
+            new KeyValuePair<string, string>(MessageKey, msg),
+        };
         for (var i = 0; i < kvpairs.Length; i += 2)
         {
             pairs.Add(new KeyValuePair<string, string>(kvpairs[i], kvpairs[i + 1]));
