@@ -39,6 +39,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <None Include="..\README.md" Pack="true" PackagePath="\" />
       <None Remove="logfmt.nuspec" />
       <PackageReference Include="Microsoft.Extensions.Logging" />
       <FrameworkReference Include="Microsoft.AspNetCore.App" />
