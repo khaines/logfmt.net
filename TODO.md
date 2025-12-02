@@ -29,7 +29,7 @@
 
 ## 4. CI/CD & Tooling (Housekeeping)
 
-- [ ] **Migrate to GitHub Actions**
+- [x] **Migrate to GitHub Actions**
   - Replace local `Makefile` workflows with a `.github/workflows/dotnet.yml` for automated build/test/pack.
 - [x] **Centralize Package Management**
   - Implement `Directory.Packages.props` to manage dependency versions in one place.
