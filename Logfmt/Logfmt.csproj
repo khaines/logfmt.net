@@ -3,18 +3,24 @@
     <PropertyGroup>
         <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
         <AssemblyName>logfmt.net</AssemblyName>
-        <PackageVersion>0.2.0</PackageVersion>
+        <PackageVersion>0.3.0</PackageVersion>
         <Title>logfmt.net</Title>
         <Authors>Ken Haines</Authors>
         <Description>A Simple logfmt library for .net applications</Description>
         <Copyright>Copyright 2025</Copyright>
         <PackageProjectUrl>https://github.com/khaines/logfmt.net</PackageProjectUrl>
-        <PackageLicenseUrl>https://github.com/khaines/logfmt.net/blob/main/LICENSE</PackageLicenseUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
         <RepositoryUrl>https://github.com/khaines/logfmt.net</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <PackageTags>logging logfmt</PackageTags>
-        <PackageReleaseNotes> 
-      - Now supports net8.0    
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <PackageReleaseNotes>
+      - Significant performance improvements (reduced allocations and increased throughput).
+      - Modernized codebase (Nullable Reference Types, File-scoped namespaces).
+      - Added benchmarks project.
+      - Now supports net8.0
       - Added support for default data pairs to be included on every log output.
       - Output of log data to console (default) or specified stream.
       - Severity levels (DEBUG, INFO, WARN, ERROR).
@@ -24,7 +30,7 @@
       - Added handling of values containing line breaks.
       - Added OpenTelemetry support for logfmt format.
       </PackageReleaseNotes>
-      <LangVersion>9</LangVersion>
+      <LangVersion>latest</LangVersion>
       <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
       <EnableNETAnalyzers>true</EnableNETAnalyzers>
       <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
@@ -33,11 +39,12 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <None Include="..\README.md" Pack="true" PackagePath="\" />
       <None Remove="logfmt.nuspec" />
-      <PackageReference Include="Microsoft.Extensions.Logging" Version="7.0.0" />
+      <PackageReference Include="Microsoft.Extensions.Logging" />
       <FrameworkReference Include="Microsoft.AspNetCore.App" />
-      <PackageReference Include="OpenTelemetry" Version="1.6.0" />
-      <PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
+      <PackageReference Include="OpenTelemetry" />
+      <PackageReference Include="StyleCop.Analyzers">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
       </PackageReference>     

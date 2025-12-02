@@ -1,16 +1,14 @@
 // Copyright (c) Ken Haines. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-namespace Logfmt.ExtensionLogging
-{
-  using System;
+namespace Logfmt.ExtensionLogging;
 
-  /// <summary>
-  /// This is a placeholder scope, which has no functionality.
-  /// Used to satisfy some interface requirements of Microsoft's logging extention libraries.
-  /// </summary>
-  internal sealed class NoOpScope : IDisposable
-  {
+/// <summary>
+/// This is a placeholder scope, which has no functionality.
+/// Used to satisfy some interface requirements of Microsoft's logging extention libraries.
+/// </summary>
+internal sealed class NoOpScope : IDisposable
+{
     private NoOpScope()
     {
     }
@@ -25,5 +23,4 @@ namespace Logfmt.ExtensionLogging
     public void Dispose()
     {
     }
-  }
 }

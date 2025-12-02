@@ -62,7 +62,7 @@ namespace Logfmt.Tests
       var state = new Dictionary<string, object>
       {
         ["foo"] = "bar",
-        ["msg"] = "test message",
+        [Logger.MessageKey] = "test message",
       };
       logger.Log(LogLevel.Warning, new EventId(1, "test"), state, null, null);
 
@@ -84,7 +84,7 @@ namespace Logfmt.Tests
       var state = new List<KeyValuePair<string, object>>
               {
                 new KeyValuePair<string, object>("foo", "bar"),
-                new KeyValuePair<string, object>("msg", "test message"),
+                new KeyValuePair<string, object>(Logger.MessageKey, "test message"),
                 new KeyValuePair<string, object>("dupe", "test message"),
                 new KeyValuePair<string, object>("dupe", "test message2"),
                 new KeyValuePair<string, object>("dupe", "test message3"),

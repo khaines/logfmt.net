@@ -2,5 +2,8 @@ Logfmt/bin/
 Logfmt/obj/
 Logfmt.Tests/bin/
 Logfmt.Tests/obj/
+Logfmt.Benchmarks/bin/
+Logfmt.Benchmarks/obj/
+BenchmarkDotNet.Artifacts/
 *.nupkg
 .vscode/
