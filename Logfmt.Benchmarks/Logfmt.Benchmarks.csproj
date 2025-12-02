@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\Logfmt\logfmt.csproj" />
+    <ProjectReference Include="..\Logfmt\Logfmt.csproj" />
   </ItemGroup>
 
   <ItemGroup>
