@@ -24,4 +24,4 @@ jobs:
     - name: Test
       run: dotnet test --no-build --configuration Release --verbosity normal
     - name: Pack
-      run: dotnet pack Logfmt/Logfmt.csproj --no-build --configuration Release --output .
+      run: dotnet pack Logfmt/Logfmt.csproj --configuration Release --output .
