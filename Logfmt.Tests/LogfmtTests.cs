@@ -227,6 +227,9 @@ namespace Logfmt.Tests
       Assert.Contains("level=debug msg=\"hello logs!\" module=foo", output);
     }
 
+    /// <summary>
+    /// Tests that line breaks and tabs in the output are escaped.
+    /// </summary>
     [Fact]
     public void EscapeLineBreaksAndTabsInOutputTest()
     {
@@ -239,7 +242,7 @@ namespace Logfmt.Tests
       }";
 
       logger.Info(msg: jsonMsg);
-      
+
       outputStream.Seek(0, SeekOrigin.Begin);
       using var reader = new StreamReader(outputStream);
 
@@ -247,7 +250,6 @@ namespace Logfmt.Tests
 
       var expected = "level=info msg=\"{\\n          'foo':'bar',\\n          'test':'true'\\n      }\"";
       Assert.Contains(expected, output);
-      
     }
   }
 }

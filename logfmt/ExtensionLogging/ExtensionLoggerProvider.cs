@@ -3,7 +3,6 @@
 
 namespace Logfmt.ExtensionLogging;
 
-using System;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;

@@ -3,10 +3,7 @@
 
 namespace Logfmt.ExtensionLogging;
 
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using Logfmt;
 using Microsoft.Extensions.Logging;
 
@@ -78,7 +75,7 @@ public class ExtensionLogger : ILogger
         // create a message field if there is a formatter defined
         if (formatter != null)
         {
-            props["msg"] = formatter(state, exception);
+            props[Logger.MessageKey] = formatter(state, exception);
         }
 
         // event id

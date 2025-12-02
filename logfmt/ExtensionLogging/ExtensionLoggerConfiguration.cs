@@ -3,7 +3,6 @@
 
 namespace Logfmt.ExtensionLogging;
 
-using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
 
 /// <summary>

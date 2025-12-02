@@ -24,10 +24,10 @@ namespace Logfmt.Tests
     public void TestAddLogfmtConsoleExporterExtension()
     {
       var options = new OpenTelemetryLoggerOptions();
-      
+
       // This should not throw an exception
       var result = options.AddLogfmtConsoleExporter();
-      
+
       Assert.NotNull(result);
       Assert.Same(options, result);
     }
@@ -39,9 +39,9 @@ namespace Logfmt.Tests
     public void TestConsoleLogExporterDefaultConstructor()
     {
       var exporter = new ConsoleLogExporter();
-      
+
       Assert.NotNull(exporter);
-      
+
       // Should not throw when disposing
       exporter.Dispose();
     }
@@ -55,9 +55,9 @@ namespace Logfmt.Tests
       var outputStream = new MemoryStream();
       var logger = new Logger(outputStream);
       var exporter = new ConsoleLogExporter(logger);
-      
+
       Assert.NotNull(exporter);
-      
+
       exporter.Dispose();
     }
 
@@ -96,7 +96,7 @@ namespace Logfmt.Tests
       });
 
       var logger = loggerFactory.CreateLogger("TestCategory");
-      
+
       // Log a message
       logger.LogInformation("Test message from OpenTelemetry");
 
@@ -130,7 +130,7 @@ namespace Logfmt.Tests
       });
 
       var logger = loggerFactory.CreateLogger("TestCategory");
-      
+
       // Log messages at different levels
       logger.LogDebug("Debug message");
       logger.LogInformation("Info message");
@@ -140,7 +140,7 @@ namespace Logfmt.Tests
       // Check output
       outputStream.Seek(0, SeekOrigin.Begin);
       var reader = new StreamReader(outputStream);
-      
+
       var debugLine = reader.ReadLine();
       var infoLine = reader.ReadLine();
       var warningLine = reader.ReadLine();
@@ -170,7 +170,7 @@ namespace Logfmt.Tests
       });
 
       var logger = loggerFactory.CreateLogger("TestCategory");
-      
+
       // Log with structured data
       logger.LogInformation("User {UserId} performed action {Action}", 123, "login");
 
@@ -202,9 +202,9 @@ namespace Logfmt.Tests
       });
 
       var logger = loggerFactory.CreateLogger("TestCategory");
-      
+
       var exception = new InvalidOperationException("Test exception");
-      
+
       // Log with exception
       logger.LogError(exception, "An error occurred");
 

@@ -3,14 +3,9 @@
 
 namespace Logfmt;
 
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
-using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
-using System.Text.RegularExpressions;
 using Microsoft.VisualBasic;
 
 /// <summary>
@@ -18,15 +13,23 @@ using Microsoft.VisualBasic;
 /// </summary>
 public sealed class Logger : IDisposable
 {
-    private const string Date = "ts";
-    private const string Message = "msg";
-    private const string Level = "level";
+    /// <summary>
+    /// The key used for the timestamp field.
+    /// </summary>
+    public const string DateKey = "ts";
+
+    /// <summary>
+    /// The key used for the message field.
+    /// </summary>
+    public const string MessageKey = "msg";
+
+    /// <summary>
+    /// The key used for the severity level field.
+    /// </summary>
+    public const string LevelKey = "level";
     private const string FieldFormat = "{0}={1}";
 
     private const char Spacer = ' ';
-
-    // will match spaces and other invalid characters that should not be in the key field
-    private readonly Regex keyNameFilter = new ("([^a-z0-9A-Z_])+", RegexOptions.IgnoreCase & RegexOptions.Compiled);
 
     private readonly TextWriter _output;
     private readonly Stream _outputStream;
@@ -120,11 +123,11 @@ public sealed class Logger : IDisposable
         var buffer = new StringBuilder();
 
         // Date in ISO8601 format
-        buffer.AppendFormat(CultureInfo.InvariantCulture, FieldFormat, Date, DateTime.UtcNow.ToString("o"));
+        buffer.AppendFormat(CultureInfo.InvariantCulture, FieldFormat, DateKey, DateTime.UtcNow.ToString("o"));
         buffer.Append(Spacer);
 
         // severity level
-        buffer.AppendFormat(CultureInfo.InvariantCulture, FieldFormat, Level, severity.ToLower());
+        buffer.AppendFormat(CultureInfo.InvariantCulture, FieldFormat, LevelKey, severity.ToLower());
 
         // parameter pairs
         foreach (var pair in kvpairs.Where(kv => !string.IsNullOrWhiteSpace(kv.Key)))
@@ -132,7 +135,9 @@ public sealed class Logger : IDisposable
             buffer.Append(Spacer);
 
             // data pair
-            buffer.AppendFormat(CultureInfo.InvariantCulture, FieldFormat, PrepareKeyField(pair.Key), PrepareValueField(pair.Key, pair.Value));
+            AppendKeyField(buffer, pair.Key);
+            buffer.Append('=');
+            AppendValueField(buffer, pair.Key, pair.Value);
         }
 
         // default data to be included
@@ -141,7 +146,9 @@ public sealed class Logger : IDisposable
             buffer.Append(Spacer);
 
             // data pair
-            buffer.AppendFormat(CultureInfo.InvariantCulture, FieldFormat, PrepareKeyField(pair.Key), PrepareValueField(pair.Key, pair.Value));
+            AppendKeyField(buffer, pair.Key);
+            buffer.Append('=');
+            AppendValueField(buffer, pair.Key, pair.Value);
         }
 
         if (_outputStream.CanWrite)
@@ -171,7 +178,7 @@ public sealed class Logger : IDisposable
 
         var pairs = new List<KeyValuePair<string, string>>
       {
-        new KeyValuePair<string, string>(Message, msg),
+        new KeyValuePair<string, string>(MessageKey, msg),
       };
         for (var i = 0; i < kvpairs.Length; i += 2)
         {
@@ -208,34 +215,95 @@ public sealed class Logger : IDisposable
         }
     }
 
-    private static string PrepareValueField(string key, string value)
+    private static void AppendKeyField(StringBuilder buffer, string key)
+    {
+        bool lastWasUnderscore = false;
+        foreach (char c in key)
+        {
+            if (IsValidKeyChar(c))
+            {
+                buffer.Append(c);
+                lastWasUnderscore = false;
+            }
+            else
+            {
+                if (!lastWasUnderscore)
+                {
+                    buffer.Append('_');
+                    lastWasUnderscore = true;
+                }
+            }
+        }
+    }
+
+    private static bool IsValidKeyChar(char c)
+    {
+        return (c >= 'a' && c <= 'z') ||
+               (c >= 'A' && c <= 'Z') ||
+               (c >= '0' && c <= '9') ||
+               c == '_';
+    }
+
+    private static void AppendValueField(StringBuilder buffer, string key, string value)
     {
         // Handle null values
         if (value == null)
         {
-            return "null";
+            buffer.Append("null");
+            return;
         }
 
-        // Handle escaping of special characters
-        value = value.Replace("\"", "\\\"", StringComparison.InvariantCulture);
-        value = value.Replace("\r", "\\r", StringComparison.InvariantCulture);
-        value = value.Replace("\n", "\\n", StringComparison.InvariantCulture);
+        bool needsQuotes = key == MessageKey;
+        bool hasSpecialChars = false;
 
-        // Always quote messages, or quote other values if they contain spaces or special characters
-        if (key == Message ||
-            value.Contains(' ', StringComparison.InvariantCulture) ||
-            value.Contains('\t', StringComparison.InvariantCulture) ||
-            value.Contains('\r', StringComparison.InvariantCulture) ||
-            value.Contains('\n', StringComparison.InvariantCulture))
+        for (int i = 0; i < value.Length; i++)
         {
-            value = "\"" + value + "\"";
+            char c = value[i];
+            if (c == ' ' || c == '\t')
+            {
+                needsQuotes = true;
+            }
+            else if (c == '"' || c == '\r' || c == '\n')
+            {
+                hasSpecialChars = true;
+            }
         }
 
-        return value;
-    }
+        if (needsQuotes)
+        {
+            buffer.Append('"');
+        }
 
-    private string PrepareKeyField(string key)
-    {
-        return keyNameFilter.Replace(key, "_");
+        if (hasSpecialChars)
+        {
+            for (int i = 0; i < value.Length; i++)
+            {
+                char c = value[i];
+                switch (c)
+                {
+                    case '"':
+                        buffer.Append("\\\"");
+                        break;
+                    case '\r':
+                        buffer.Append("\\r");
+                        break;
+                    case '\n':
+                        buffer.Append("\\n");
+                        break;
+                    default:
+                        buffer.Append(c);
+                        break;
+                }
+            }
+        }
+        else
+        {
+            buffer.Append(value);
+        }
+
+        if (needsQuotes)
+        {
+            buffer.Append('"');
+        }
     }
 }

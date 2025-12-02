@@ -3,8 +3,6 @@
 
 namespace Logfmt.ExtensionLogging;
 
-using System;
-
 /// <summary>
 /// This is a placeholder scope, which has no functionality.
 /// Used to satisfy some interface requirements of Microsoft's logging extention libraries.

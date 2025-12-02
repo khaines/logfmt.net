@@ -2,13 +2,10 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 namespace Logfmt.OpenTelemetryLogging;
 
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using Microsoft.Extensions.Logging;
 using Logfmt.ExtensionLogging;
+using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
 
@@ -70,7 +67,7 @@ public class ConsoleLogExporter : BaseExporter<LogRecord>
     {
         var attributes = new Dictionary<string, string>();
 
-        attributes["msg"] = record.FormattedMessage ?? record.Body ?? string.Empty;
+        attributes[Logger.MessageKey] = record.FormattedMessage ?? record.Body ?? string.Empty;
         if (record.Exception is not null)
         {
             attributes["exception_msg"] = record.Exception.Message;
