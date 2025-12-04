@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
+        <TargetFrameworks>net6.0;net7.0;net8.0;net10.0</TargetFrameworks>
         <AssemblyName>logfmt.net</AssemblyName>
         <PackageVersion>0.3.0</PackageVersion>
         <Title>logfmt.net</Title>
@@ -29,6 +29,7 @@
       - Added support for OpenTelemetry Logging.
       - Added handling of values containing line breaks.
       - Added OpenTelemetry support for logfmt format.
+      - Added support for net10.0
       </PackageReleaseNotes>
       <LangVersion>latest</LangVersion>
       <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
