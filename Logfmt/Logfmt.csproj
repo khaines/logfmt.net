@@ -1,9 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
+        <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
         <AssemblyName>logfmt.net</AssemblyName>
-        <PackageVersion>0.3.0</PackageVersion>
+        <PackageVersion>0.4.0</PackageVersion>
         <Title>logfmt.net</Title>
         <Authors>Ken Haines</Authors>
         <Description>A Simple logfmt library for .net applications</Description>
@@ -20,7 +20,6 @@
       - Significant performance improvements (reduced allocations and increased throughput).
       - Modernized codebase (Nullable Reference Types, File-scoped namespaces).
       - Added benchmarks project.
-      - Now supports net8.0
       - Added support for default data pairs to be included on every log output.
       - Output of log data to console (default) or specified stream.
       - Severity levels (DEBUG, INFO, WARN, ERROR).
@@ -29,6 +28,7 @@
       - Added support for OpenTelemetry Logging.
       - Added handling of values containing line breaks.
       - Added OpenTelemetry support for logfmt format.
+      - Added support for net10.0
       </PackageReleaseNotes>
       <LangVersion>latest</LangVersion>
       <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
