@@ -31,7 +31,7 @@ If you are adding new features, please include unit tests to cover the new funct
 
 ## Code Style and Standards
 
-* **StyleCop**: We use `StyleCop.Analyzers` to enforce code style. The build will fail if there are style violations (treated as warnings/errors).
+* **StyleCop**: We use `StyleCop.Analyzers` to enforce code style. The build will fail if there are style violations (warnings are elevated to errors).
 * **Formatting**: Please ensure your code is formatted according to the project's `.editorconfig` (if present) or standard C# conventions.
 * **Nullable Reference Types**: The project uses nullable reference types (`<Nullable>enable</Nullable>`). Please ensure your code handles nullability correctly and does not introduce new warnings.
 
