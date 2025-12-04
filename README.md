@@ -96,4 +96,6 @@ dotnet test
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request or open an Issue.
+Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
+
+Please feel free to submit a Pull Request or open an Issue.
