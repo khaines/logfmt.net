@@ -1,62 +1,99 @@
 # Logfmt.net
 
-## Project Intro
+[![NuGet](https://img.shields.io/nuget/v/logfmt.net.svg)](https://www.nuget.org/packages/logfmt.net)
+[![.NET](https://github.com/khaines/logfmt.net/actions/workflows/dotnet.yml/badge.svg)](https://github.com/khaines/logfmt.net/actions/workflows/dotnet.yml)
 
-logfmt.net is intended to be a simple & lightweight structured logging library for .net applications.
+**logfmt.net** is a simple, lightweight, and high-performance structured logging library for .NET applications, focusing on the [logfmt](https://brandur.org/logfmt) format.
 
-Goals:
+## Features
 
-- Support the logfmt output format.
-- Enable the practice of structured logging.
-- Provide space delimited or json encoding of output.
-- Sending output to default console stream or any other provided stream.
-
-Non-Goals:
-
-- Managing file rollovers
-- Data routing rules & filters
-- Output templates
+- **High Performance**: Optimized for low allocations and high throughput.
+- **Modern .NET Support**: Targets .NET 8.0 and .NET 10.0.
+- **Standard Integrations**:
+  - Native support for `Microsoft.Extensions.Logging`.
+  - Integration with `OpenTelemetry`.
+- **Flexible Output**: Writes to Console (stdout) by default, or any `Stream`.
+- **Structured Data**: First-class support for Key-Value pairs.
 
 ## Installation
 
-Binary distribution of this library is available in a nuget package. Run the following command to install it:
+Install the package via NuGet:
 
 ```bash
-dotnet add package logfmt.net --version 0.4.0
+dotnet add package logfmt.net
 ```
 
-Note: this requires the .NET CLI tool. Other installation methods for nuget packages are available on the package page @ <https://www.nuget.org/packages/logfmt.net>
+## Usage
 
-## Building the source
-
-Running `make all` in a shell from the root directory of this repository will build the library and execute the tests. It uses the `dotnet` command, so the .NET CLI tool must be installed.
-
-## Using the library
-
-To use the logfmt logger, create a new instance of the Logger class:
+### Basic Usage
 
 ```csharp
-var log = new logfmt.Logger();
-log.Info("hello logs!");
+using logfmt;
+
+var log = new Logger();
+log.Info("Hello, World!");
+// Output: level=info msg="Hello, World!" ts=2023-10-27T10:00:00.0000000Z
+
+// With structured data
+log.Info("User logged in", 
+    new KeyValuePair<string, string>("user_id", "123"), 
+    new KeyValuePair<string, string>("ip", "192.168.1.1"));
+// Output: level=info msg="User logged in" ts=... user_id=123 ip=192.168.1.1
 ```
 
-The default contructor will send the log output to the console output stream. There is an overload for the constructor to provide a different stream to send output to.
+### Microsoft.Extensions.Logging
 
-All of the severity log methods (Debug,Info,Warn,Error) accept KeyValuePair<string,string> params in addition to the log message. This enables the logging of structured data outside of the log message string.
+Logfmt.net integrates seamlessly with the standard .NET logging abstractions.
 
 ```csharp
-var log = new logfmt.Logger();
-log.Info("hello logs!", new KeyValuePair<string,string>("foo","bar"),new KeyValuePair<string,string>("bar","foo"));
+using Microsoft.Extensions.Logging;
+using Logfmt.ExtensionLogging;
+
+// Add to your ILoggingBuilder (e.g., in ASP.NET Core or Generic Host)
+builder.Logging.ClearProviders();
+builder.Logging.AddLogfmt();
+
+// Inject and use ILogger
+public class MyService
+{
+    private readonly ILogger<MyService> _logger;
+
+    public MyService(ILogger<MyService> logger)
+    {
+        _logger = logger;
+    }
+
+    public void DoWork()
+    {
+        _logger.LogInformation("Processing request {RequestId}", 12345);
+        // Output: level=info msg="Processing request 12345" ts=... RequestId=12345
+    }
+}
 ```
 
-If there is a key value pair that is needed on every logging call, the WithData method can register it for all future calls in the instance.
+### OpenTelemetry Support
+
+You can use logfmt as an exporter for OpenTelemetry logs.
 
 ```csharp
-var log = new logfmt.Logger().WithData(new KeyValuePair<string,string>("foo","bar"));
-// the Info call below will have foo=bar added to the output 
-log.Info("hello logs!");
+using OpenTelemetry.Logs;
+using Logfmt.OpenTelemetryLogging;
+
+builder.Logging.AddOpenTelemetry(options =>
+{
+    options.AddLogfmtConsoleExporter();
+});
 ```
 
-## Contributions
+## Building the Source
 
-Contributions are welcomed & encouraged! If there is something missing or broken please feel free to write an issue, or submit a PR.
+You can build the project using the .NET CLI:
+
+```bash
+dotnet build
+dotnet test
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request or open an Issue.
