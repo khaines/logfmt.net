@@ -22,7 +22,7 @@ Non-Goals:
 Binary distribution of this library is available in a nuget package. Run the following command to install it:
 
 ```bash
-dotnet add package logfmt.net --version 0.0.4-alpha
+dotnet add package logfmt.net --version 0.4.0
 ```
 
 Note: this requires the .NET CLI tool. Other installation methods for nuget packages are available on the package page @ <https://www.nuget.org/packages/logfmt.net>
