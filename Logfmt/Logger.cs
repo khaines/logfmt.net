@@ -29,12 +29,14 @@ public sealed class Logger : IDisposable
 
     private const char Spacer = ' ';
 
+    private const int MaxCachedBuilderCapacity = 1024;
+
     [ThreadStatic]
     private static StringBuilder? cachedBuilder;
 
     private readonly TextWriter _output;
     private readonly Stream _outputStream;
-    private readonly object _writeLock = new ();
+    private readonly object _writeLock;
     private List<KeyValuePair<string, string>> includedData;
 
     private SeverityLevel levelFilter;
@@ -62,10 +64,16 @@ public sealed class Logger : IDisposable
     /// <param name="stream">The stream to output log lines to.</param>
     /// <param name="levelFilter">Optional severity level filter for log output.</param>
     public Logger(Stream stream, SeverityLevel levelFilter = SeverityLevel.Info)
+        : this(stream, levelFilter, new object())
+    {
+    }
+
+    private Logger(Stream stream, SeverityLevel levelFilter, object writeLock)
     {
         this.levelFilter = levelFilter;
         _outputStream = stream;
         _output = new StreamWriter(_outputStream);
+        _writeLock = writeLock;
         includedData = new List<KeyValuePair<string, string>>();
     }
 
@@ -83,7 +91,7 @@ public sealed class Logger : IDisposable
     /// <returns>A new <see cref="Logfmt.Logger"/> instance.</returns>
     public Logger WithData(params KeyValuePair<string, string>[] kvpairs)
     {
-        var newLogger = new Logger(_outputStream, this.levelFilter)
+        var newLogger = new Logger(_outputStream, this.levelFilter, _writeLock)
         {
             includedData = new List<KeyValuePair<string, string>>(includedData),
         };
@@ -174,8 +182,11 @@ public sealed class Logger : IDisposable
             }
         }
 
-        buffer.Clear();
-        cachedBuilder = buffer;
+        if (buffer.Capacity <= MaxCachedBuilderCapacity)
+        {
+            buffer.Clear();
+            cachedBuilder = buffer;
+        }
     }
 
     /// <summary>
