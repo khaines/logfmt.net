@@ -65,41 +65,41 @@ public class ConsoleLogExporter : BaseExporter<LogRecord>
 
     private static KeyValuePair<string, string>[] ExtractAttributes(LogRecord record)
     {
-        var attributes = new Dictionary<string, string>();
+        var attributes = new List<KeyValuePair<string, string>>(8);
 
-        attributes[Logger.MessageKey] = record.FormattedMessage ?? record.Body ?? string.Empty;
+        attributes.Add(new KeyValuePair<string, string>(Logger.MessageKey, record.FormattedMessage ?? record.Body ?? string.Empty));
         if (record.Exception is not null)
         {
-            attributes["exception_msg"] = record.Exception.Message;
-            attributes["exception_stack"] = record.Exception.StackTrace ?? string.Empty;
+            attributes.Add(new KeyValuePair<string, string>("exception_msg", record.Exception.Message));
+            attributes.Add(new KeyValuePair<string, string>("exception_stack", record.Exception.StackTrace ?? string.Empty));
         }
 
         if (record.CategoryName is not null)
         {
-            attributes["category"] = record.CategoryName;
+            attributes.Add(new KeyValuePair<string, string>("category", record.CategoryName));
         }
 
         if (record.EventId.Id != 0 || !string.IsNullOrWhiteSpace(record.EventId.Name))
         {
-            attributes["event_id"] = record.EventId.Id.ToString(CultureInfo.InvariantCulture);
+            attributes.Add(new KeyValuePair<string, string>("event_id", record.EventId.Id.ToString(CultureInfo.InvariantCulture)));
             if (record.EventId.Name != null)
             {
-                attributes["event_name"] = record.EventId.Name;
+                attributes.Add(new KeyValuePair<string, string>("event_name", record.EventId.Name));
             }
         }
 
         if (record.TraceId != default)
         {
-            attributes["trace_id"] = record.TraceId.ToString();
-            attributes["span_id"] = record.SpanId.ToString();
-            attributes["trace_flags"] = record.TraceFlags.ToString();
+            attributes.Add(new KeyValuePair<string, string>("trace_id", record.TraceId.ToString()));
+            attributes.Add(new KeyValuePair<string, string>("span_id", record.SpanId.ToString()));
+            attributes.Add(new KeyValuePair<string, string>("trace_flags", record.TraceFlags.ToString()));
         }
 
         if (record.Attributes is not null)
         {
             foreach (var a in record.Attributes)
             {
-                attributes[a.Key] = a.Value?.ToString() ?? "null";
+                attributes.Add(new KeyValuePair<string, string>(a.Key, a.Value?.ToString() ?? "null"));
             }
         }
 

@@ -10,6 +10,17 @@ using System.Globalization;
 /// </summary>
 public static class LoggerExtensions
 {
+    private static readonly string[] SeverityLevelNames =
+    [
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error",
+        "fatal",
+        "off",
+    ];
+
     /// <summary>
     /// Creates a log event with a severity of Information.
     /// </summary>
@@ -19,6 +30,11 @@ public static class LoggerExtensions
     public static void Info(this Logger logger, string msg, params string[] kvpairs)
     {
         ArgumentNullException.ThrowIfNull(logger);
+        if (!logger.IsEnabled(SeverityLevel.Info))
+        {
+            return;
+        }
+
         logger.Log(SeverityLevel.Info, msg, kvpairs);
     }
 
@@ -31,6 +47,11 @@ public static class LoggerExtensions
     public static void Debug(this Logger logger, string msg, params string[] kvpairs)
     {
         ArgumentNullException.ThrowIfNull(logger);
+        if (!logger.IsEnabled(SeverityLevel.Debug))
+        {
+            return;
+        }
+
         logger.Log(SeverityLevel.Debug, msg, kvpairs);
     }
 
@@ -43,6 +64,11 @@ public static class LoggerExtensions
     public static void Warn(this Logger logger, string msg, params string[] kvpairs)
     {
         ArgumentNullException.ThrowIfNull(logger);
+        if (!logger.IsEnabled(SeverityLevel.Warn))
+        {
+            return;
+        }
+
         logger.Log(SeverityLevel.Warn, msg, kvpairs);
     }
 
@@ -55,6 +81,11 @@ public static class LoggerExtensions
     public static void Error(this Logger logger, string msg, params string[] kvpairs)
     {
         ArgumentNullException.ThrowIfNull(logger);
+        if (!logger.IsEnabled(SeverityLevel.Error))
+        {
+            return;
+        }
+
         logger.Log(SeverityLevel.Error, msg, kvpairs);
     }
 
@@ -66,6 +97,12 @@ public static class LoggerExtensions
     [SuppressMessage("Microsoft.Globalization", "CA1308:NormalizeStringsToUppercase", Justification = "Logfmt requires lowercase strings.")]
     internal static string ToLower(this SeverityLevel level)
     {
+        var index = (int)level;
+        if ((uint)index < (uint)SeverityLevelNames.Length)
+        {
+            return SeverityLevelNames[index];
+        }
+
         return level.ToString().ToLower(CultureInfo.InvariantCulture);
     }
 }

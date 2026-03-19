@@ -69,7 +69,8 @@ public class ExtensionLogger : ILogger
             return;
         }
 
-        var props = new Dictionary<string, string>();
+        // Dictionary is needed for state properties to deduplicate keys (last value wins)
+        var props = new Dictionary<string, string>(8);
         if (state is IEnumerable<KeyValuePair<string, object>> stateProperties)
         {
             // add properties from the state object if it was a collection of pairs
