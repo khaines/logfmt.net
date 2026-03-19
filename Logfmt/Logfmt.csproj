@@ -3,11 +3,11 @@
     <PropertyGroup>
         <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
         <AssemblyName>logfmt.net</AssemblyName>
-        <PackageVersion>0.4.0</PackageVersion>
+        <PackageVersion>0.4.1</PackageVersion>
         <Title>logfmt.net</Title>
         <Authors>Ken Haines</Authors>
         <Description>A Simple logfmt library for .net applications</Description>
-        <Copyright>Copyright 2025</Copyright>
+        <Copyright>Copyright 2025-2026</Copyright>
         <PackageProjectUrl>https://github.com/khaines/logfmt.net</PackageProjectUrl>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -17,6 +17,16 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <PackageReleaseNotes>
+      0.4.1:
+      - ~1.8x throughput improvement and ~70% reduction in per-call memory allocations.
+      - Thread-safe output writes with shared lock across WithData-derived loggers.
+      - Cached severity level strings to eliminate per-call enum formatting allocations.
+      - ThreadStatic StringBuilder reuse with capacity cap to prevent memory retention.
+      - Replaced LINQ hot-path allocations with direct iteration.
+      - Fixed race condition in ExtensionLoggerProvider.CreateLogger.
+      - Replaced Dictionary with pre-sized List in ConsoleLogExporter for lower overhead.
+
+      0.4.0:
       - Significant performance improvements (reduced allocations and increased throughput).
       - Modernized codebase (Nullable Reference Types, File-scoped namespaces).
       - Added benchmarks project.
