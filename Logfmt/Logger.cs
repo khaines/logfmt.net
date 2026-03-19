@@ -29,8 +29,14 @@ public sealed class Logger : IDisposable
 
     private const char Spacer = ' ';
 
+    private const int MaxCachedBuilderCapacity = 1024;
+
+    [ThreadStatic]
+    private static StringBuilder? cachedBuilder;
+
     private readonly TextWriter _output;
     private readonly Stream _outputStream;
+    private readonly object _writeLock;
     private List<KeyValuePair<string, string>> includedData;
 
     private SeverityLevel levelFilter;
@@ -58,10 +64,16 @@ public sealed class Logger : IDisposable
     /// <param name="stream">The stream to output log lines to.</param>
     /// <param name="levelFilter">Optional severity level filter for log output.</param>
     public Logger(Stream stream, SeverityLevel levelFilter = SeverityLevel.Info)
+        : this(stream, levelFilter, new object())
+    {
+    }
+
+    private Logger(Stream stream, SeverityLevel levelFilter, object writeLock)
     {
         this.levelFilter = levelFilter;
         _outputStream = stream;
         _output = new StreamWriter(_outputStream);
+        _writeLock = writeLock;
         includedData = new List<KeyValuePair<string, string>>();
     }
 
@@ -79,7 +91,7 @@ public sealed class Logger : IDisposable
     /// <returns>A new <see cref="Logfmt.Logger"/> instance.</returns>
     public Logger WithData(params KeyValuePair<string, string>[] kvpairs)
     {
-        var newLogger = new Logger(_outputStream, this.levelFilter)
+        var newLogger = new Logger(_outputStream, this.levelFilter, _writeLock)
         {
             includedData = new List<KeyValuePair<string, string>>(includedData),
         };
@@ -118,7 +130,9 @@ public sealed class Logger : IDisposable
             return;
         }
 
-        var buffer = new StringBuilder();
+        var buffer = cachedBuilder ?? new StringBuilder();
+        cachedBuilder = null;
+        buffer.Clear();
 
         // Date in ISO8601 format
         buffer.AppendFormat(CultureInfo.InvariantCulture, FieldFormat, DateKey, DateTime.UtcNow.ToString("o"));
@@ -128,8 +142,13 @@ public sealed class Logger : IDisposable
         buffer.AppendFormat(CultureInfo.InvariantCulture, FieldFormat, LevelKey, severity.ToLower());
 
         // parameter pairs
-        foreach (var pair in kvpairs.Where(kv => !string.IsNullOrWhiteSpace(kv.Key)))
+        foreach (var pair in kvpairs)
         {
+            if (string.IsNullOrWhiteSpace(pair.Key))
+            {
+                continue;
+            }
+
             buffer.Append(Spacer);
 
             // data pair
@@ -139,8 +158,13 @@ public sealed class Logger : IDisposable
         }
 
         // default data to be included
-        foreach (var pair in includedData.Where(kv => !string.IsNullOrWhiteSpace(kv.Key)))
+        foreach (var pair in includedData)
         {
+            if (string.IsNullOrWhiteSpace(pair.Key))
+            {
+                continue;
+            }
+
             buffer.Append(Spacer);
 
             // data pair
@@ -151,8 +175,17 @@ public sealed class Logger : IDisposable
 
         if (_outputStream.CanWrite)
         {
-            _output.WriteLine(buffer.ToString());
-            _output.Flush();
+            lock (_writeLock)
+            {
+                _output.WriteLine(buffer.ToString());
+                _output.Flush();
+            }
+        }
+
+        if (buffer.Capacity <= MaxCachedBuilderCapacity)
+        {
+            buffer.Clear();
+            cachedBuilder = buffer;
         }
     }
 
@@ -174,16 +207,15 @@ public sealed class Logger : IDisposable
 
         CheckParamArrayLength(kvpairs);
 
-        var pairs = new List<KeyValuePair<string, string>>
-        {
-            new KeyValuePair<string, string>(MessageKey, msg),
-        };
+        var pairCount = 1 + (kvpairs.Length / 2);
+        var pairs = new KeyValuePair<string, string>[pairCount];
+        pairs[0] = new KeyValuePair<string, string>(MessageKey, msg);
         for (var i = 0; i < kvpairs.Length; i += 2)
         {
-            pairs.Add(new KeyValuePair<string, string>(kvpairs[i], kvpairs[i + 1]));
+            pairs[1 + (i / 2)] = new KeyValuePair<string, string>(kvpairs[i], kvpairs[i + 1]);
         }
 
-        Log(severity, pairs.ToArray());
+        Log(severity, pairs);
     }
 
     /// <summary>

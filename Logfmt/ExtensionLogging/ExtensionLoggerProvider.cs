@@ -41,18 +41,15 @@ public sealed class ExtensionLoggerProvider : ILoggerProvider
       Justification = "The created logger instance has a longer lifetime than the method it is created in.")]
     public ILogger CreateLogger(string categoryName)
     {
-        if (!_currentConfig.LogLevel.TryGetValue(categoryName, out LogLevel logLevel) && !_currentConfig.LogLevel.TryGetValue("Default", out logLevel))
+        return _loggers.GetOrAdd(categoryName, name =>
         {
-            logLevel = LogLevel.None;
-        }
+            if (!_currentConfig.LogLevel.TryGetValue(name, out LogLevel logLevel) && !_currentConfig.LogLevel.TryGetValue("Default", out logLevel))
+            {
+                logLevel = LogLevel.None;
+            }
 
-        if (!_loggers.TryGetValue(categoryName, out ExtensionLogger? extLogger))
-        {
-            extLogger = new ExtensionLogger(new Logger(logLevel.ToSeverityLevel()).WithData(Category, categoryName), GetCurrentConfig, categoryName);
-            _ = _loggers.TryAdd(categoryName, extLogger);
-        }
-
-        return extLogger;
+            return new ExtensionLogger(new Logger(logLevel.ToSeverityLevel()).WithData(Category, name), GetCurrentConfig, name);
+        });
     }
 
     /// <inheritdoc/>
