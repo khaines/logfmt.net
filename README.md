@@ -2,6 +2,7 @@
 
 [![NuGet](https://img.shields.io/nuget/v/logfmt.net.svg)](https://www.nuget.org/packages/logfmt.net)
 [![.NET](https://github.com/khaines/logfmt.net/actions/workflows/dotnet.yml/badge.svg)](https://github.com/khaines/logfmt.net/actions/workflows/dotnet.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **logfmt.net** is a simple, lightweight, and high-performance structured logging library for .NET applications, focusing on the [logfmt](https://brandur.org/logfmt) format.
 
@@ -28,17 +29,45 @@ dotnet add package logfmt.net
 ### Basic Usage
 
 ```csharp
-using logfmt;
+using Logfmt;
 
 var log = new Logger();
 log.Info("Hello, World!");
-// Output: level=info msg="Hello, World!" ts=2023-10-27T10:00:00.0000000Z
+// Output: ts=2026-03-21T12:00:00.0000000Z level=info msg="Hello, World!"
 
-// With structured data
-log.Info("User logged in", 
-    new KeyValuePair<string, string>("user_id", "123"), 
-    new KeyValuePair<string, string>("ip", "192.168.1.1"));
-// Output: level=info msg="User logged in" ts=... user_id=123 ip=192.168.1.1
+// With structured data using string pairs
+log.Info("User logged in", "user_id", "123", "ip", "192.168.1.1");
+// Output: ts=... level=info msg="User logged in" user_id=123 ip=192.168.1.1
+```
+
+### Default Fields with WithData
+
+Use `WithData()` to create a logger that includes fields on every log entry:
+
+```csharp
+var log = new Logger().WithData("service", "api", "env", "production");
+log.Info("Server started", "port", "8080");
+// Output: ts=... level=info msg="Server started" port=8080 service=api env=production
+```
+
+### Severity Filtering
+
+Control which log levels are emitted:
+
+```csharp
+var log = new Logger(SeverityLevel.Warn);
+log.Debug("This won't be logged");
+log.Warn("This will be logged");
+```
+
+### Custom Output Stream
+
+Write logs to any stream:
+
+```csharp
+using var stream = File.OpenWrite("app.log");
+var log = new Logger(stream, SeverityLevel.Info);
+log.Info("Written to file");
 ```
 
 ### Microsoft.Extensions.Logging
@@ -66,7 +95,7 @@ public class MyService
     public void DoWork()
     {
         _logger.LogInformation("Processing request {RequestId}", 12345);
-        // Output: level=info msg="Processing request 12345" ts=... RequestId=12345
+        // Output: ts=... level=info msg="Processing request 12345" RequestId=12345
     }
 }
 ```
@@ -99,3 +128,7 @@ dotnet test
 Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
 
 Please feel free to submit a Pull Request or open an Issue.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
