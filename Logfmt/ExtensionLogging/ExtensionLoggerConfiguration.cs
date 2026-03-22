@@ -6,12 +6,14 @@ namespace Logfmt.ExtensionLogging;
 using Microsoft.Extensions.Logging;
 
 /// <summary>
-/// The configuration object used by the logger.
+/// The configuration object used by the logger. Holds per-category log level settings.
+/// Use the "Default" key to set the fallback log level when no category-specific level is configured.
 /// </summary>
 public class ExtensionLoggerConfiguration
 {
     /// <summary>
-    /// Gets logging level by category.
+    /// Gets the dictionary of log levels keyed by category name.
+    /// Use "Default" as the key to set the fallback log level.
     /// </summary>
     public Dictionary<string, LogLevel> LogLevel { get; } = new Dictionary<string, LogLevel>();
 }
