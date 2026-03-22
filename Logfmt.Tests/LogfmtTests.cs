@@ -468,6 +468,7 @@ namespace Logfmt.Tests
     /// <summary>
     /// Tests that concurrent logging from multiple threads does not corrupt output.
     /// </summary>
+    /// <returns>A task representing the asynchronous test.</returns>
     [Fact]
     public async System.Threading.Tasks.Task ConcurrentLoggingDoesNotCorruptOutput()
     {
@@ -512,6 +513,7 @@ namespace Logfmt.Tests
     /// <summary>
     /// Tests concurrent logging with WithData-derived loggers sharing the same stream.
     /// </summary>
+    /// <returns>A task representing the asynchronous test.</returns>
     [Fact]
     public async System.Threading.Tasks.Task ConcurrentWithDataLoggersShareStream()
     {

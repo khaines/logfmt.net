@@ -98,13 +98,6 @@ namespace Logfmt.Tests
       Assert.EndsWith("level=warn foo=bar msg=\"test message\" dupe=\"test message4\" event_id=1 event_name=test", output, StringComparison.InvariantCultureIgnoreCase);
     }
 
-    private ExtensionLoggerConfiguration GetConfiguration()
-    {
-      var config = new ExtensionLoggerConfiguration();
-      config.LogLevel["test"] = LogLevel.Information;
-      return config;
-    }
-
     /// <summary>
     /// Tests that ExtensionLogger.WithData adds fields to subsequent log entries.
     /// </summary>
@@ -235,24 +228,33 @@ namespace Logfmt.Tests
       Assert.DoesNotContain("event_name", output);
     }
 
+    private ExtensionLoggerConfiguration GetConfiguration()
+    {
+      var config = new ExtensionLoggerConfiguration();
+      config.LogLevel["test"] = LogLevel.Information;
+      return config;
+    }
+
     private sealed class TestOptionsMonitor : Microsoft.Extensions.Options.IOptionsMonitor<ExtensionLoggerConfiguration>
     {
+#nullable enable
       public TestOptionsMonitor(ExtensionLoggerConfiguration value)
       {
-        CurrentValue = value;
+        this.CurrentValue = value;
       }
 
       public ExtensionLoggerConfiguration CurrentValue { get; }
 
       public ExtensionLoggerConfiguration Get(string? name)
       {
-        return CurrentValue;
+        return this.CurrentValue;
       }
 
       public IDisposable? OnChange(Action<ExtensionLoggerConfiguration, string?> listener)
       {
         return null;
       }
+#nullable restore
     }
   }
 }
