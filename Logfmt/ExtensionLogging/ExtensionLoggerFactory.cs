@@ -27,8 +27,9 @@ public sealed class ExtensionLoggerFactory : ILoggerFactory
     /// <inheritdoc/>
     public void AddProvider(ILoggerProvider provider)
     {
-        // currently noop
-        // TODO: decide what to do with multiple providers
+        // logfmt.net is a single-provider library by design (see ADR 0001).
+        // Additional providers should be composed at the ILoggerFactory level
+        // using Microsoft.Extensions.Logging's built-in provider composition.
         var msg = LoggerMessage.Define<ILoggerProvider>(LogLevel.Warning, new EventId(0, "AddProvider"), "Ignoring added provider: {Provider}");
         msg(_logger, provider, null);
     }
@@ -42,6 +43,6 @@ public sealed class ExtensionLoggerFactory : ILoggerFactory
     /// <inheritdoc/>
     public void Dispose()
     {
-        // currently noop
+        // Factory does not own the provider's lifecycle
     }
 }
