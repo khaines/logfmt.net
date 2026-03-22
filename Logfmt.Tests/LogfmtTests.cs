@@ -879,5 +879,138 @@ namespace Logfmt.Tests
       var reader = new StreamReader(outputStream);
       Assert.Null(reader.ReadLine());
     }
+
+    /// <summary>
+    /// Tests logging with DateTime typed values.
+    /// </summary>
+    [Fact]
+    public void LogWithTypedDateTimeValue()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+      var dt = new DateTime(2026, 3, 22, 12, 0, 0, DateTimeKind.Utc);
+
+      logger.Log(SeverityLevel.Info, "event", "occurred_at", dt);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("occurred_at=", output);
+      Assert.Contains("2026", output);
+    }
+
+    /// <summary>
+    /// Tests logging with enum typed values.
+    /// </summary>
+    [Fact]
+    public void LogWithTypedEnumValue()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      logger.Log(SeverityLevel.Info, "test", "level", SeverityLevel.Warn);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("level=Warn", output);
+    }
+
+    /// <summary>
+    /// Tests that odd-length object array throws ArgumentException.
+    /// </summary>
+    [Fact]
+    public void TypedValuesOddLengthThrows()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      Assert.Throws<ArgumentException>(() =>
+          logger.Log(SeverityLevel.Info, "test", new object[] { "key_only" }));
+    }
+
+    /// <summary>
+    /// Tests typed Debug extension method.
+    /// </summary>
+    [Fact]
+    public void DebugWithTypedValues()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream, SeverityLevel.Debug);
+
+      logger.Debug("test", "count", 10);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("level=debug", output);
+      Assert.Contains("count=10", output);
+    }
+
+    /// <summary>
+    /// Tests typed Warn extension method.
+    /// </summary>
+    [Fact]
+    public void WarnWithTypedValues()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      logger.Warn("test", "retries", 3);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("level=warn", output);
+      Assert.Contains("retries=3", output);
+    }
+
+    /// <summary>
+    /// Tests typed Error extension method.
+    /// </summary>
+    [Fact]
+    public void ErrorWithTypedValues()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      logger.Error("failed", "code", 500);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("level=error", output);
+      Assert.Contains("code=500", output);
+    }
+
+    /// <summary>
+    /// Tests mixing string and object values produces same output.
+    /// </summary>
+    [Fact]
+    public void TypedAndStringOverloadsProduceSameOutput()
+    {
+      var stringStream = new MemoryStream();
+      using var stringLogger = new Logger(stringStream);
+      stringLogger.Log(SeverityLevel.Info, "test", "count", "42");
+
+      var typedStream = new MemoryStream();
+      using var typedLogger = new Logger(typedStream);
+      typedLogger.Log(SeverityLevel.Info, "test", "count", 42);
+
+      stringStream.Seek(0, SeekOrigin.Begin);
+      typedStream.Seek(0, SeekOrigin.Begin);
+
+      var stringOutput = new StreamReader(stringStream).ReadLine();
+      var typedOutput = new StreamReader(typedStream).ReadLine();
+
+      // Both should contain count=42 (timestamps will differ)
+      Assert.Contains("count=42", stringOutput);
+      Assert.Contains("count=42", typedOutput);
+    }
   }
 }

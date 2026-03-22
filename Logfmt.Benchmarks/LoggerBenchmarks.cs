@@ -59,6 +59,18 @@ public class LoggerBenchmarks
             "field7", "value7", "field8", "value8");
     }
 
+    [Benchmark]
+    public void LogTypedFields()
+    {
+        _logger.Log(SeverityLevel.Info, "test message", "status", 200, "duration_ms", 42);
+    }
+
+    [Benchmark]
+    public void LogTypedFiltered()
+    {
+        _logger.Log(SeverityLevel.Debug, "filtered", new object[] { "count", 42 });
+    }
+
     // Parser benchmarks
     private string _simpleLogLine = null!;
     private string _complexLogLine = null!;
