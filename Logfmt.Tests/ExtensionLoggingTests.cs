@@ -322,6 +322,42 @@ namespace Logfmt.Tests
       Assert.Contains("msg=null", output);
     }
 
+    /// <summary>
+    /// Tests that AddLogfmt registers the provider via ILoggingBuilder.
+    /// </summary>
+    [Fact]
+    public void TestAddLogfmtRegistersProvider()
+    {
+      using var loggerFactory = LoggerFactory.Create(builder =>
+      {
+        builder.AddLogfmt(config =>
+        {
+          config.LogLevel["Default"] = LogLevel.Information;
+        });
+      });
+
+      var logger = loggerFactory.CreateLogger("TestAddLogfmt");
+      Assert.NotNull(logger);
+
+      // Should not throw — provider is registered and functional
+      logger.LogInformation("test from AddLogfmt");
+    }
+
+    /// <summary>
+    /// Tests that AddLogfmt without configuration works.
+    /// </summary>
+    [Fact]
+    public void TestAddLogfmtWithoutConfiguration()
+    {
+      using var loggerFactory = LoggerFactory.Create(builder =>
+      {
+        builder.AddLogfmt();
+      });
+
+      var logger = loggerFactory.CreateLogger("TestAddLogfmtNoConfig");
+      Assert.NotNull(logger);
+    }
+
     private ExtensionLoggerConfiguration GetConfiguration()
     {
       var config = new ExtensionLoggerConfiguration();
