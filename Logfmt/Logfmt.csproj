@@ -18,7 +18,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <PackageReleaseNotes>
       1.0.0:
-      - First stable release.
+      - First Feature Complete release.
       - logfmt parser (LogfmtParser.Parse) for decoding logfmt strings into key-value pairs.
       - ILoggingBuilder.AddLogfmt() extension for ASP.NET Core, Generic Host, and Minimal APIs.
       - Typed value support (int, bool, double, etc.) via params object[] overloads.
