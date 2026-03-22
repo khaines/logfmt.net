@@ -3,20 +3,33 @@
     <PropertyGroup>
         <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
         <AssemblyName>logfmt.net</AssemblyName>
-        <PackageVersion>0.4.1</PackageVersion>
+        <PackageVersion>1.0.0</PackageVersion>
         <Title>logfmt.net</Title>
         <Authors>Ken Haines</Authors>
-        <Description>A Simple logfmt library for .net applications</Description>
+        <Description>A fast, lightweight structured logging library for .NET using the logfmt format. Includes encoder, parser, Microsoft.Extensions.Logging provider, and OpenTelemetry exporter. ~110ns per log call, zero-alloc when filtered.</Description>
         <Copyright>Copyright 2025-2026</Copyright>
         <PackageProjectUrl>https://github.com/khaines/logfmt.net</PackageProjectUrl>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <RepositoryUrl>https://github.com/khaines/logfmt.net</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
-        <PackageTags>logging logfmt</PackageTags>
+        <PackageTags>logging logfmt structured-logging opentelemetry dotnet</PackageTags>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <PackageReleaseNotes>
+      1.0.0:
+      - First stable release.
+      - logfmt parser (LogfmtParser.Parse) for decoding logfmt strings into key-value pairs.
+      - ILoggingBuilder.AddLogfmt() extension for ASP.NET Core, Generic Host, and Minimal APIs.
+      - Typed value support (int, bool, double, etc.) via params object[] overloads.
+      - Source Link, deterministic builds, and symbol package (.snupkg).
+      - Removed ASP.NET Core FrameworkReference — usable by console apps and worker services.
+      - Resolved all TODOs; public API surface audited and stable.
+      - SeverityLevel.Off now correctly disables all logging.
+      - Backslash escaping in values.
+      - Formatter exception handling in ExtensionLogger.
+      - 92 tests covering core, extensions, OpenTelemetry, parser, edge cases, and concurrency.
+
       0.4.1:
       - ~1.8x throughput improvement and ~70% reduction in per-call memory allocations.
       - Thread-safe output writes with shared lock across WithData-derived loggers.
