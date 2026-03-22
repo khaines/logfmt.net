@@ -228,6 +228,100 @@ namespace Logfmt.Tests
       Assert.DoesNotContain("event_name", output);
     }
 
+    /// <summary>
+    /// Tests that a formatter that throws an exception does not crash the logger.
+    /// </summary>
+    [Fact]
+    public void TestFormatterExceptionDoesNotCrash()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream), this.GetConfiguration, "test");
+
+      logger.Log(
+          LogLevel.Information,
+          new EventId(0),
+          "test state",
+          null,
+          (Func<string, Exception, string>)((s, e) => throw new InvalidOperationException("formatter broke")));
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("FORMATTER ERROR", output);
+    }
+
+    /// <summary>
+    /// Tests that state properties with null values are skipped.
+    /// </summary>
+    [Fact]
+    public void TestStateWithNullPropertyValuesAreSkipped()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream), this.GetConfiguration, "test");
+
+      var state = new Dictionary<string, object>
+      {
+        ["present"] = "yes",
+        ["missing"] = null,
+      };
+      logger.Log(LogLevel.Warning, new EventId(0), state, null, null);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("present=yes", output);
+      Assert.DoesNotContain("missing", output);
+    }
+
+    /// <summary>
+    /// Tests that a non-enumerable state is handled gracefully.
+    /// </summary>
+    [Fact]
+    public void TestNonEnumerableStateIsHandled()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream), this.GetConfiguration, "test");
+
+      logger.Log(
+          LogLevel.Information,
+          new EventId(0),
+          42,
+          null,
+          (s, e) => $"state is {s}");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("msg=\"state is 42\"", output);
+    }
+
+    /// <summary>
+    /// Tests that a formatter returning null does not crash.
+    /// </summary>
+    [Fact]
+    public void TestFormatterReturningNullIsHandled()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream), this.GetConfiguration, "test");
+
+      logger.Log(
+          LogLevel.Information,
+          new EventId(0),
+          "test",
+          null,
+          (Func<string, Exception, string>)((s, e) => null));
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("level=info", output);
+      Assert.Contains("msg=null", output);
+    }
+
     private ExtensionLoggerConfiguration GetConfiguration()
     {
       var config = new ExtensionLoggerConfiguration();
