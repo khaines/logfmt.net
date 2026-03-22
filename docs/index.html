@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>logfmt.net — Structured logging for .NET</title>
+  <meta name="description" content="A fast, lightweight structured logging library for .NET using the logfmt format.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0b;
+      --surface: #141416;
+      --border: #27272a;
+      --text: #fafafa;
+      --muted: #a1a1aa;
+      --accent: #22d3ee;
+      --accent-dim: rgba(34, 211, 238, 0.1);
+      --green: #4ade80;
+      --mono: 'JetBrains Mono', monospace;
+      --sans: 'Inter', -apple-system, sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Hero */
+    .hero {
+      min-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(ellipse at 50% 50%, var(--accent-dim) 0%, transparent 50%);
+      animation: pulse 8s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.1); }
+    }
+
+    .hero-content { position: relative; z-index: 1; max-width: 720px; }
+
+    .logo {
+      font-family: var(--mono);
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.5rem;
+    }
+
+    .logo .dot { color: var(--accent); }
+
+    .tagline {
+      font-size: clamp(1.1rem, 2.5vw, 1.35rem);
+      color: var(--muted);
+      margin-bottom: 2.5rem;
+      font-weight: 400;
+    }
+
+    .install-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      font-family: var(--mono);
+      font-size: 0.95rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .install-box:hover { border-color: var(--accent); }
+
+    .install-box code { color: var(--text); }
+    .install-box .prompt { color: var(--muted); user-select: none; }
+    .install-box .copy {
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-family: var(--sans);
+      user-select: none;
+    }
+
+    .hero-links {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.65rem 1.5rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg);
+    }
+    .btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
+
+    .btn-ghost {
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-ghost:hover { border-color: var(--muted); background: var(--surface); }
+
+    /* Output preview */
+    .output-preview {
+      margin-top: 3rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      text-align: left;
+      overflow-x: auto;
+      max-width: 100%;
+    }
+
+    .output-preview .key { color: var(--accent); }
+    .output-preview .eq { color: var(--muted); }
+    .output-preview .val { color: var(--green); }
+    .output-preview .str { color: #f9a8d4; }
+
+    /* Features */
+    .features {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 6rem 2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 2rem;
+    }
+
+    .feature {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem;
+      transition: border-color 0.2s;
+    }
+
+    .feature:hover { border-color: var(--accent); }
+
+    .feature-icon {
+      font-size: 1.5rem;
+      margin-bottom: 0.75rem;
+      display: block;
+    }
+
+    .feature h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .feature p {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    /* Code examples */
+    .examples {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 2rem 6rem;
+    }
+
+    .examples h2 {
+      text-align: center;
+      font-size: 1.75rem;
+      margin-bottom: 2.5rem;
+      font-weight: 600;
+    }
+
+    .code-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 2rem;
+    }
+
+    .code-block-header {
+      padding: 0.75rem 1.25rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .code-block-header .dot-r { width: 8px; height: 8px; border-radius: 50%; background: #ef4444; }
+    .code-block-header .dot-y { width: 8px; height: 8px; border-radius: 50%; background: #eab308; }
+    .code-block-header .dot-g { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; }
+
+    .code-block pre {
+      padding: 1.25rem;
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      line-height: 1.7;
+      overflow-x: auto;
+      color: var(--muted);
+    }
+
+    .code-block pre .kw { color: #c084fc; }
+    .code-block pre .type { color: var(--accent); }
+    .code-block pre .str { color: #f9a8d4; }
+    .code-block pre .comment { color: #52525b; }
+    .code-block pre .fn { color: #fbbf24; }
+
+    /* Metrics bar */
+    .metrics {
+      max-width: 720px;
+      margin: 0 auto 4rem;
+      padding: 0 2rem;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      text-align: center;
+    }
+
+    .metric-value {
+      font-family: var(--mono);
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .metric-label {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 0.25rem;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 600px) {
+      .metrics { grid-template-columns: 1fr; gap: 1rem; }
+      .install-box { font-size: 0.8rem; padding: 0.75rem 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <section class="hero">
+    <div class="hero-content">
+      <h1 class="logo">logfmt<span class="dot">.</span>net</h1>
+      <p class="tagline">Fast, structured logging for .NET in logfmt format</p>
+
+      <div class="install-box" onclick="navigator.clipboard.writeText('dotnet add package logfmt.net')">
+        <span class="prompt">$</span>
+        <code>dotnet add package logfmt.net</code>
+        <span class="copy">click to copy</span>
+      </div>
+
+      <div class="output-preview">
+        <span class="key">ts</span><span class="eq">=</span><span class="val">2026-03-22T03:44:07Z</span>
+        <span class="key"> level</span><span class="eq">=</span><span class="val">info</span>
+        <span class="key"> msg</span><span class="eq">=</span><span class="str">"User logged in"</span>
+        <span class="key"> user_id</span><span class="eq">=</span><span class="val">123</span>
+        <span class="key"> service</span><span class="eq">=</span><span class="val">api</span>
+      </div>
+
+      <div class="hero-links" style="margin-top: 2rem;">
+        <a href="https://github.com/khaines/logfmt.net" class="btn btn-primary">
+          GitHub
+        </a>
+        <a href="https://www.nuget.org/packages/logfmt.net" class="btn btn-ghost">
+          NuGet
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <div class="metrics">
+    <div>
+      <div class="metric-value">~110ns</div>
+      <div class="metric-label">per log call</div>
+    </div>
+    <div>
+      <div class="metric-value">264B</div>
+      <div class="metric-label">allocation per call</div>
+    </div>
+    <div>
+      <div class="metric-value">0 alloc</div>
+      <div class="metric-label">when filtered</div>
+    </div>
+  </div>
+
+  <section class="features">
+    <div class="feature">
+      <span class="feature-icon">⚡</span>
+      <h3>High Performance</h3>
+      <p>Thread-static StringBuilder reuse, cached severity strings, zero-alloc filtered calls. Built for hot paths.</p>
+    </div>
+    <div class="feature">
+      <span class="feature-icon">🔌</span>
+      <h3>Microsoft.Extensions.Logging</h3>
+      <p>Drop-in ILoggerProvider. One line to wire up with ASP.NET Core or Generic Host.</p>
+    </div>
+    <div class="feature">
+      <span class="feature-icon">📡</span>
+      <h3>OpenTelemetry</h3>
+      <p>Export OpenTelemetry log records in logfmt format with trace context, attributes, and exceptions.</p>
+    </div>
+    <div class="feature">
+      <span class="feature-icon">🎯</span>
+      <h3>Modern .NET</h3>
+      <p>Targets .NET 8.0 and .NET 10.0. Nullable reference types, file-scoped namespaces, implicit usings.</p>
+    </div>
+    <div class="feature">
+      <span class="feature-icon">🔧</span>
+      <h3>Flexible Output</h3>
+      <p>Console by default, or any Stream. WithData() builder pattern for default fields across log entries.</p>
+    </div>
+    <div class="feature">
+      <span class="feature-icon">🛡️</span>
+      <h3>Thread Safe</h3>
+      <p>Shared write locks across WithData-derived loggers. Safe for concurrent multi-threaded logging.</p>
+    </div>
+  </section>
+
+  <section class="examples">
+    <h2>Get started in seconds</h2>
+
+    <div class="code-block">
+      <div class="code-block-header">
+        <span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span>
+        &nbsp; Basic Usage
+      </div>
+      <pre><span class="kw">using</span> <span class="type">Logfmt</span>;
+
+<span class="kw">var</span> log = <span class="kw">new</span> <span class="type">Logger</span>();
+log.<span class="fn">Info</span>(<span class="str">"Server started"</span>, <span class="str">"port"</span>, <span class="str">"8080"</span>);
+
+<span class="comment">// With default fields on every entry</span>
+<span class="kw">var</span> log = <span class="kw">new</span> <span class="type">Logger</span>().<span class="fn">WithData</span>(<span class="str">"service"</span>, <span class="str">"api"</span>);
+log.<span class="fn">Info</span>(<span class="str">"Request handled"</span>, <span class="str">"status"</span>, <span class="str">"200"</span>);</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header">
+        <span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span>
+        &nbsp; ASP.NET Core
+      </div>
+      <pre><span class="kw">using</span> <span class="type">Logfmt.ExtensionLogging</span>;
+
+builder.Logging.<span class="fn">ClearProviders</span>();
+builder.Logging.<span class="fn">AddLogfmt</span>();
+
+<span class="comment">// Then inject and use ILogger as usual</span>
+_logger.<span class="fn">LogInformation</span>(<span class="str">"Processing {RequestId}"</span>, id);</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header">
+        <span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span>
+        &nbsp; OpenTelemetry
+      </div>
+      <pre><span class="kw">using</span> <span class="type">Logfmt.OpenTelemetryLogging</span>;
+
+builder.Logging.<span class="fn">AddOpenTelemetry</span>(options =>
+{
+    options.<span class="fn">AddLogfmtConsoleExporter</span>();
+});</pre>
+    </div>
+  </section>
+
+  <footer>
+    <p>
+      MIT License · <a href="https://github.com/khaines/logfmt.net">GitHub</a> · <a href="https://www.nuget.org/packages/logfmt.net">NuGet</a> · <a href="https://github.com/khaines/logfmt.net/releases">Releases</a>
+    </p>
+  </footer>
+
+</body>
+</html>
