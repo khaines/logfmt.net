@@ -223,6 +223,40 @@ public sealed class Logger : IDisposable
     }
 
     /// <summary>
+    /// Writes a log entry to the underlying stream with typed values.
+    /// Values are converted to strings using <see cref="object.ToString()"/>.
+    /// </summary>
+    /// <param name="severity">The severity of the log entry.</param>
+    /// <param name="msg">The log message value.</param>
+    /// <param name="kvpairs">Alternating key and value objects to include with the entry. Keys must be strings.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="msg"/> or <paramref name="kvpairs"/> is null.</exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="kvpairs"/> has an odd number of elements.</exception>
+    public void Log(SeverityLevel severity, string msg, params object[] kvpairs)
+    {
+        if (!IsEnabled(severity))
+        {
+            return;
+        }
+
+        ArgumentNullException.ThrowIfNull(msg);
+        ArgumentNullException.ThrowIfNull(kvpairs);
+
+        CheckParamArrayLength(kvpairs);
+
+        var pairCount = 1 + (kvpairs.Length / 2);
+        var pairs = new KeyValuePair<string, string>[pairCount];
+        pairs[0] = new KeyValuePair<string, string>(MessageKey, msg);
+        for (var i = 0; i < kvpairs.Length; i += 2)
+        {
+            var key = kvpairs[i]?.ToString() ?? string.Empty;
+            var value = kvpairs[i + 1]?.ToString();
+            pairs[1 + (i / 2)] = new KeyValuePair<string, string>(key, value!);
+        }
+
+        Log(severity, pairs);
+    }
+
+    /// <summary>
     /// Checks if a given severity level is enabled for log output.
     /// </summary>
     /// <param name="level">The level for which to check.</param>

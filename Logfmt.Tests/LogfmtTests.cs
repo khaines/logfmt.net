@@ -788,5 +788,96 @@ namespace Logfmt.Tests
 
       Assert.Contains("___=value", output);
     }
+
+    /// <summary>
+    /// Tests logging with typed integer values.
+    /// </summary>
+    [Fact]
+    public void LogWithTypedIntegerValues()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      logger.Log(SeverityLevel.Info, "request", "status", 200, "duration_ms", 42);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("status=200", output);
+      Assert.Contains("duration_ms=42", output);
+    }
+
+    /// <summary>
+    /// Tests logging with typed boolean values.
+    /// </summary>
+    [Fact]
+    public void LogWithTypedBooleanValues()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      logger.Log(SeverityLevel.Info, "config", "debug", true, "verbose", false);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("debug=True", output);
+      Assert.Contains("verbose=False", output);
+    }
+
+    /// <summary>
+    /// Tests logging with mixed typed values via extension method.
+    /// </summary>
+    [Fact]
+    public void InfoWithTypedValues()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      logger.Info("test", "count", 5, "rate", 3.14);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("count=5", output);
+      Assert.Contains("rate=3.14", output);
+    }
+
+    /// <summary>
+    /// Tests that null typed values are rendered as null.
+    /// </summary>
+    [Fact]
+    public void LogWithNullTypedValue()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      logger.Log(SeverityLevel.Info, "test", "key", (object)null);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("key=null", output);
+    }
+
+    /// <summary>
+    /// Tests that typed values are filtered with zero cost when level is disabled.
+    /// </summary>
+    [Fact]
+    public void TypedValuesFilteredWhenDisabled()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream, SeverityLevel.Error);
+
+      logger.Info("should not log", "count", 42);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      Assert.Null(reader.ReadLine());
+    }
   }
 }
