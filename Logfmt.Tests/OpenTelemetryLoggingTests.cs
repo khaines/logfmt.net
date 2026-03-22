@@ -217,5 +217,60 @@ namespace Logfmt.Tests
       Assert.Contains("msg=\"An error occurred\"", output, StringComparison.InvariantCultureIgnoreCase);
       Assert.Contains("exception_msg=\"Test exception\"", output, StringComparison.InvariantCultureIgnoreCase);
     }
+
+    /// <summary>
+    /// Tests that the ConsoleLogExporter handles a category name in log records.
+    /// </summary>
+    [Fact]
+    public void TestOpenTelemetryCategoryName()
+    {
+      var outputStream = new MemoryStream();
+      var customLogger = new Logger(outputStream);
+
+      using var loggerFactory = LoggerFactory.Create(builder =>
+      {
+        builder.AddOpenTelemetry(options =>
+        {
+          options.AddProcessor(new SimpleLogRecordExportProcessor(new ConsoleLogExporter(customLogger)));
+        });
+      });
+
+      var logger = loggerFactory.CreateLogger("MyService");
+      logger.LogInformation("test");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("category=MyService", output);
+    }
+
+    /// <summary>
+    /// Tests that the ConsoleLogExporter handles an EventId.
+    /// </summary>
+    [Fact]
+    public void TestOpenTelemetryEventId()
+    {
+      var outputStream = new MemoryStream();
+      var customLogger = new Logger(outputStream);
+
+      using var loggerFactory = LoggerFactory.Create(builder =>
+      {
+        builder.AddOpenTelemetry(options =>
+        {
+          options.AddProcessor(new SimpleLogRecordExportProcessor(new ConsoleLogExporter(customLogger)));
+        });
+      });
+
+      var logger = loggerFactory.CreateLogger("TestCategory");
+      logger.LogInformation(new EventId(42, "MyEvent"), "test");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("event_id=42", output);
+      Assert.Contains("event_name=MyEvent", output);
+    }
   }
 }
