@@ -344,12 +344,17 @@
     <div class="feature">
       <span class="feature-icon">🔌</span>
       <h3>Microsoft.Extensions.Logging</h3>
-      <p>Drop-in ILoggerProvider. One line to wire up with ASP.NET Core or Generic Host.</p>
+      <p>Drop-in ILoggerProvider. One line to wire up with ASP.NET Core, Generic Host, or Minimal APIs.</p>
     </div>
     <div class="feature">
       <span class="feature-icon">📡</span>
       <h3>OpenTelemetry</h3>
       <p>Export OpenTelemetry log records in logfmt format with trace context, attributes, and exceptions.</p>
+    </div>
+    <div class="feature">
+      <span class="feature-icon">🔄</span>
+      <h3>Encode &amp; Decode</h3>
+      <p>Write logfmt output and parse logfmt strings back into key-value pairs with LogfmtParser.Parse().</p>
     </div>
     <div class="feature">
       <span class="feature-icon">🎯</span>
@@ -381,9 +386,12 @@
 <span class="kw">var</span> log = <span class="kw">new</span> <span class="type">Logger</span>();
 log.<span class="fn">Info</span>(<span class="str">"Server started"</span>, <span class="str">"port"</span>, <span class="str">"8080"</span>);
 
-<span class="comment">// With default fields on every entry</span>
-<span class="kw">var</span> log = <span class="kw">new</span> <span class="type">Logger</span>().<span class="fn">WithData</span>(<span class="str">"service"</span>, <span class="str">"api"</span>);
-log.<span class="fn">Info</span>(<span class="str">"Request handled"</span>, <span class="str">"status"</span>, <span class="str">"200"</span>);</pre>
+<span class="comment">// Typed values — int, bool, double, etc.</span>
+log.<span class="fn">Info</span>(<span class="str">"Request handled"</span>, <span class="str">"status"</span>, 200, <span class="str">"ms"</span>, 42);
+
+<span class="comment">// Default fields on every entry</span>
+<span class="kw">var</span> svc = <span class="kw">new</span> <span class="type">Logger</span>().<span class="fn">WithData</span>(<span class="str">"service"</span>, <span class="str">"api"</span>);
+svc.<span class="fn">Info</span>(<span class="str">"Ready"</span>);</pre>
     </div>
 
     <div class="code-block">
@@ -394,10 +402,28 @@ log.<span class="fn">Info</span>(<span class="str">"Request handled"</span>, <sp
       <pre><span class="kw">using</span> <span class="type">Logfmt.ExtensionLogging</span>;
 
 builder.Logging.<span class="fn">ClearProviders</span>();
-builder.Logging.<span class="fn">AddLogfmt</span>();
+builder.Logging.<span class="fn">AddLogfmt</span>(config =>
+{
+    config.LogLevel[<span class="str">"Default"</span>] = LogLevel.Information;
+});
 
 <span class="comment">// Then inject and use ILogger as usual</span>
 _logger.<span class="fn">LogInformation</span>(<span class="str">"Processing {RequestId}"</span>, id);</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header">
+        <span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span>
+        &nbsp; Parsing
+      </div>
+      <pre><span class="kw">using</span> <span class="type">Logfmt</span>;
+
+<span class="kw">var</span> pairs = <span class="type">LogfmtParser</span>.<span class="fn">Parse</span>(
+    <span class="str">"level=info msg=\"hello\" user_id=123"</span>);
+
+<span class="comment">// pairs[0] = { "level", "info" }</span>
+<span class="comment">// pairs[1] = { "msg", "hello" }</span>
+<span class="comment">// pairs[2] = { "user_id", "123" }</span></pre>
     </div>
 
     <div class="code-block">

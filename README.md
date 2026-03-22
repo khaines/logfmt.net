@@ -10,11 +10,12 @@
 
 - **High Performance**: Optimized for low allocations and high throughput.
 - **Modern .NET Support**: Targets .NET 8.0 and .NET 10.0.
+- **Encode & Decode**: Write logfmt output and parse logfmt strings back into key-value pairs.
 - **Standard Integrations**:
   - Native support for `Microsoft.Extensions.Logging`.
   - Integration with `OpenTelemetry`.
 - **Flexible Output**: Writes to Console (stdout) by default, or any `Stream`.
-- **Structured Data**: First-class support for Key-Value pairs.
+- **Structured Data**: First-class support for Key-Value pairs with typed values.
 
 ## Installation
 
@@ -38,6 +39,10 @@ log.Info("Hello, World!");
 // With structured data using string pairs
 log.Info("User logged in", "user_id", "123", "ip", "192.168.1.1");
 // Output: ts=... level=info msg="User logged in" user_id=123 ip=192.168.1.1
+
+// With typed values (int, bool, double, etc. — converted via ToString())
+log.Info("Request handled", "status", 200, "duration_ms", 42);
+// Output: ts=... level=info msg="Request handled" status=200 duration_ms=42
 ```
 
 ### Default Fields with WithData
@@ -56,7 +61,7 @@ Control which log levels are emitted:
 
 ```csharp
 var log = new Logger(SeverityLevel.Warn);
-log.Debug("This won't be logged");
+log.Debug("This won't be logged");  // zero-cost: no allocations
 log.Warn("This will be logged");
 ```
 
@@ -70,6 +75,18 @@ var log = new Logger(stream, SeverityLevel.Info);
 log.Info("Written to file");
 ```
 
+### Parsing logfmt
+
+Parse logfmt-formatted strings back into key-value pairs:
+
+```csharp
+var pairs = LogfmtParser.Parse("level=info msg=\"hello world\" user_id=123");
+// Returns IReadOnlyList<KeyValuePair<string, string>>
+// pairs[0] = { "level", "info" }
+// pairs[1] = { "msg", "hello world" }
+// pairs[2] = { "user_id", "123" }
+```
+
 ### Microsoft.Extensions.Logging
 
 Logfmt.net integrates seamlessly with the standard .NET logging abstractions.
@@ -81,6 +98,13 @@ using Logfmt.ExtensionLogging;
 // Add to your ILoggingBuilder (e.g., in ASP.NET Core or Generic Host)
 builder.Logging.ClearProviders();
 builder.Logging.AddLogfmt();
+
+// Or with configuration
+builder.Logging.AddLogfmt(config =>
+{
+    config.LogLevel["Default"] = LogLevel.Information;
+    config.LogLevel["Microsoft"] = LogLevel.Warning;
+});
 
 // Inject and use ILogger
 public class MyService
