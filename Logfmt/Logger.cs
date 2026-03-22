@@ -101,10 +101,12 @@ public sealed class Logger : IDisposable
     }
 
     /// <summary>
-    /// Creates a new logger with the provided parameters.
+    /// Creates a new logger with the provided key-value pairs included as default data on every log entry.
     /// </summary>
-    /// <param name="kvpairs">labels and values to include with log output.</param>
-    /// <returns>A new <see cref="Logfmt.Logger"/> instance.</returns>
+    /// <param name="kvpairs">Alternating key and value strings to include with log output.</param>
+    /// <returns>A new <see cref="Logfmt.Logger"/> instance with the accumulated default data.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="kvpairs"/> is null.</exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="kvpairs"/> has an odd number of elements.</exception>
     public Logger WithData(params string[] kvpairs)
     {
         ArgumentNullException.ThrowIfNull(kvpairs);
@@ -193,8 +195,10 @@ public sealed class Logger : IDisposable
     /// Writes a log entry to the underlying stream.
     /// </summary>
     /// <param name="severity">The severity of the log entry.</param>
-    /// <param name="msg">the log message value.</param>
-    /// <param name="kvpairs">labels and values to include with the entry.</param>
+    /// <param name="msg">The log message value.</param>
+    /// <param name="kvpairs">Alternating key and value strings to include with the entry.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="msg"/> or <paramref name="kvpairs"/> is null.</exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="kvpairs"/> has an odd number of elements.</exception>
     public void Log(SeverityLevel severity, string msg, params string[] kvpairs)
     {
         if (!IsEnabled(severity))
