@@ -46,6 +46,11 @@
       <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
       <CodeAnalysisRuleSet>../stylecop.ruleset</CodeAnalysisRuleSet>
       <GenerateDocumentationFile>true</GenerateDocumentationFile>
+      <PublishRepositoryUrl>true</PublishRepositoryUrl>
+      <EmbedUntrackedSources>true</EmbedUntrackedSources>
+      <IncludeSymbols>true</IncludeSymbols>
+      <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+      <Deterministic>true</Deterministic>
     </PropertyGroup>
 
     <ItemGroup>
@@ -55,6 +60,10 @@
       <FrameworkReference Include="Microsoft.AspNetCore.App" />
       <PackageReference Include="OpenTelemetry" />
       <PackageReference Include="StyleCop.Analyzers">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      </PackageReference>
+      <PackageReference Include="Microsoft.SourceLink.GitHub">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
       </PackageReference>     
