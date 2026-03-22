@@ -405,6 +405,19 @@ _logger.<span class="fn">LogInformation</span>(<span class="str">"Processing {Re
     <div class="code-block">
       <div class="code-block-header">
         <span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span>
+        &nbsp; OpenTelemetry
+      </div>
+      <pre><span class="kw">using</span> <span class="type">Logfmt.OpenTelemetryLogging</span>;
+
+builder.Logging.<span class="fn">AddOpenTelemetry</span>(options =>
+{
+    options.<span class="fn">AddLogfmtConsoleExporter</span>();
+});</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header">
+        <span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span>
         &nbsp; Parsing
       </div>
       <pre><span class="kw">using</span> <span class="type">Logfmt</span>;
@@ -415,19 +428,6 @@ _logger.<span class="fn">LogInformation</span>(<span class="str">"Processing {Re
 <span class="comment">// pairs[0] = { "level", "info" }</span>
 <span class="comment">// pairs[1] = { "msg", "hello" }</span>
 <span class="comment">// pairs[2] = { "user_id", "123" }</span></pre>
-    </div>
-
-    <div class="code-block">
-      <div class="code-block-header">
-        <span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span>
-        &nbsp; OpenTelemetry
-      </div>
-      <pre><span class="kw">using</span> <span class="type">Logfmt.OpenTelemetryLogging</span>;
-
-builder.Logging.<span class="fn">AddOpenTelemetry</span>(options =>
-{
-    options.<span class="fn">AddLogfmtConsoleExporter</span>();
-});</pre>
     </div>
   </section>
 
