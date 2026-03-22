@@ -225,7 +225,7 @@ public sealed class Logger : IDisposable
     /// <returns>true if enabled.</returns>
     public bool IsEnabled(SeverityLevel level)
     {
-        return level >= levelFilter;
+        return levelFilter != SeverityLevel.Off && level >= levelFilter;
     }
 
     /// <summary>
@@ -293,7 +293,7 @@ public sealed class Logger : IDisposable
             {
                 needsQuotes = true;
             }
-            else if (c == '"' || c == '\r' || c == '\n')
+            else if (c == '"' || c == '\\' || c == '\r' || c == '\n')
             {
                 hasSpecialChars = true;
             }
@@ -313,6 +313,9 @@ public sealed class Logger : IDisposable
                 {
                     case '"':
                         buffer.Append("\\\"");
+                        break;
+                    case '\\':
+                        buffer.Append("\\\\");
                         break;
                     case '\r':
                         buffer.Append("\\r");

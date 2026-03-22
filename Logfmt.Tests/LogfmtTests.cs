@@ -575,5 +575,218 @@ namespace Logfmt.Tests
       Assert.True(logger.IsEnabled(SeverityLevel.Error));
       Assert.True(logger.IsEnabled(SeverityLevel.Fatal));
     }
+
+    /// <summary>
+    /// Tests that SeverityLevel.Off disables all logging.
+    /// </summary>
+    [Fact]
+    public void SeverityLevelOffDisablesAllLogging()
+    {
+      var outputStream = new MemoryStream();
+      var logger = new Logger(outputStream, SeverityLevel.Off);
+
+      logger.Log(SeverityLevel.Trace, "should not appear");
+      logger.Log(SeverityLevel.Debug, "should not appear");
+      logger.Log(SeverityLevel.Info, "should not appear");
+      logger.Log(SeverityLevel.Warn, "should not appear");
+      logger.Log(SeverityLevel.Error, "should not appear");
+      logger.Log(SeverityLevel.Fatal, "should not appear");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      Assert.Null(reader.ReadLine());
+    }
+
+    /// <summary>
+    /// Tests IsEnabled returns false for all levels when filter is Off.
+    /// </summary>
+    [Fact]
+    public void IsEnabledReturnsFalseWhenFilterIsOff()
+    {
+      var logger = new Logger(Stream.Null, SeverityLevel.Off);
+
+      Assert.False(logger.IsEnabled(SeverityLevel.Trace));
+      Assert.False(logger.IsEnabled(SeverityLevel.Debug));
+      Assert.False(logger.IsEnabled(SeverityLevel.Info));
+      Assert.False(logger.IsEnabled(SeverityLevel.Warn));
+      Assert.False(logger.IsEnabled(SeverityLevel.Error));
+      Assert.False(logger.IsEnabled(SeverityLevel.Fatal));
+      Assert.False(logger.IsEnabled(SeverityLevel.Off));
+    }
+
+    /// <summary>
+    /// Tests that backslashes in values are escaped.
+    /// </summary>
+    [Fact]
+    public void BackslashInValueIsEscaped()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      logger.Info("test", "path", "C:\\Users\\test");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("path=C:\\\\Users\\\\test", output);
+    }
+
+    /// <summary>
+    /// Tests that empty string values are output correctly.
+    /// </summary>
+    [Fact]
+    public void EmptyStringValueIsOutput()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      logger.Log(SeverityLevel.Info, new KeyValuePair<string, string>("key", string.Empty));
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("key=", output);
+    }
+
+    /// <summary>
+    /// Tests that unicode characters in keys are replaced with underscores.
+    /// </summary>
+    [Fact]
+    public void UnicodeInKeyIsReplacedWithUnderscore()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      logger.Log(SeverityLevel.Info, new KeyValuePair<string, string>("café", "latte"));
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("caf_=latte", output);
+    }
+
+    /// <summary>
+    /// Tests that unicode/emoji in values passes through correctly.
+    /// </summary>
+    [Fact]
+    public void UnicodeEmojiInValuePassesThrough()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      logger.Info("test", "emoji", "🚀");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("emoji=🚀", output);
+    }
+
+    /// <summary>
+    /// Tests that values containing equals signs are output correctly.
+    /// </summary>
+    [Fact]
+    public void ValueContainingEqualsSign()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      logger.Info("test", "query", "key1=value1");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("query=key1=value1", output);
+    }
+
+    /// <summary>
+    /// Tests that consecutive special characters in keys collapse to a single underscore.
+    /// </summary>
+    [Fact]
+    public void ConsecutiveSpecialCharsInKeyCollapseToSingleUnderscore()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      logger.Log(SeverityLevel.Info, new KeyValuePair<string, string>("@@@invalid@@@", "value"));
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("_invalid_=value", output);
+    }
+
+    /// <summary>
+    /// Tests that values with mixed special characters are all escaped correctly.
+    /// </summary>
+    [Fact]
+    public void MixedSpecialCharsInValueAllEscaped()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      logger.Info("test", "data", "line1\r\nline2\t\"quoted\"\\path");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("data=\"line1\\r\\nline2\t\\\"quoted\\\"\\\\path\"", output);
+    }
+
+    /// <summary>
+    /// Tests that WithData with an empty array does not affect output.
+    /// </summary>
+    [Fact]
+    public void WithDataEmptyArrayNoEffect()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream).WithData(Array.Empty<KeyValuePair<string, string>>());
+
+      logger.Info("test");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("msg=\"test\"", output);
+      Assert.DoesNotContain("=  ", output);
+    }
+
+    /// <summary>
+    /// Tests that a null message throws ArgumentNullException.
+    /// </summary>
+    [Fact]
+    public void NullMessageThrowsArgumentNullException()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      Assert.Throws<ArgumentNullException>(() => logger.Log(SeverityLevel.Info, (string)null));
+    }
+
+    /// <summary>
+    /// Tests that a key consisting only of underscores is valid.
+    /// </summary>
+    [Fact]
+    public void AllUnderscoreKeyIsValid()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      logger.Log(SeverityLevel.Info, new KeyValuePair<string, string>("___", "value"));
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("___=value", output);
+    }
   }
 }

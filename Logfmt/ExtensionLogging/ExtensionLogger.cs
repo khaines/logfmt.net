@@ -86,7 +86,14 @@ public class ExtensionLogger : ILogger
         // create a message field if there is a formatter defined
         if (formatter != null)
         {
-            props[Logger.MessageKey] = formatter(state, exception);
+            try
+            {
+                props[Logger.MessageKey] = formatter(state, exception);
+            }
+            catch (Exception ex)
+            {
+                props[Logger.MessageKey] = $"[FORMATTER ERROR: {ex.Message}]";
+            }
         }
 
         // event id
