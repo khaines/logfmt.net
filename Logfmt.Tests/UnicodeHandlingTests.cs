@@ -38,6 +38,7 @@ namespace Logfmt.Tests
       Assert.Equal("\u4e2d\u6587", dict["zh"]);
       Assert.Equal("\u3053\u3093\u306b\u3061\u306f", dict["ja"]);
       Assert.Equal("\uc548\ub155\ud558\uc138\uc694", dict["ko"]);
+      AssertFieldSet(output, "zh", "ja", "ko");
     }
 
     /// <summary>
@@ -58,6 +59,7 @@ namespace Logfmt.Tests
 
       Assert.Contains("emoji=" + emoji, output.Split(' '));
       Assert.Equal(emoji, dict["emoji"]);
+      AssertFieldSet(output, "emoji");
     }
 
     /// <summary>
@@ -78,6 +80,7 @@ namespace Logfmt.Tests
 
       Assert.Contains("text=" + combined, output.Split(' '));
       Assert.Equal(combined, dict["text"]);
+      AssertFieldSet(output, "text");
     }
 
     /// <summary>
@@ -98,6 +101,7 @@ namespace Logfmt.Tests
 
       Assert.Contains("chars=" + surrogate, output.Split(' '));
       Assert.Equal(surrogate, dict["chars"]);
+      AssertFieldSet(output, "chars");
     }
 
     /// <summary>
@@ -125,6 +129,7 @@ namespace Logfmt.Tests
       Assert.False(dict.ContainsKey("user\u00e9"));
       Assert.DoesNotContain("\u00e9", output);
       Assert.DoesNotContain("\U0001F600", output);
+      AssertFieldSet(output, "user_", "_key");
     }
 
     /// <summary>
@@ -147,6 +152,7 @@ namespace Logfmt.Tests
       Assert.Equal("v", dict["_"]);
       Assert.False(dict.ContainsKey("\u4e2d\u6587"));
       Assert.DoesNotContain("\u4e2d", output);
+      AssertFieldSet(output, "_");
     }
 
     /// <summary>
@@ -155,7 +161,11 @@ namespace Logfmt.Tests
     [Fact]
     public void ParserHandlesUnicodeValuesDirectly()
     {
-      var dict = ParseToDict("emoji=\U0001F600 cjk=\u4e2d\u6587 quoted=\"caf\u00e9 \u4e2d\u6587\"");
+      var input = "emoji=\U0001F600 cjk=\u4e2d\u6587 quoted=\"caf\u00e9 \u4e2d\u6587\"";
+      var pairs = LogfmtParser.Parse(input);
+      Assert.Equal(3, pairs.Count);
+
+      var dict = ParseToDict(input);
 
       Assert.Equal("\U0001F600", dict["emoji"]);
       Assert.Equal("\u4e2d\u6587", dict["cjk"]);
@@ -189,6 +199,7 @@ namespace Logfmt.Tests
       Assert.Equal("\U0001F44D\U0001F3FD", dict["emoji"]);
       Assert.Equal("caf\u00e9", dict["accent"]);
       Assert.Equal("\u65e5\u672c\u8a9e", dict["cjk"]);
+      AssertFieldSet(output, "emoji", "accent", "cjk");
     }
 
     /// <summary>
@@ -222,6 +233,7 @@ namespace Logfmt.Tests
         Assert.Equal("\u4e2d\u6587", dict["msg"]);
         Assert.Equal("\U0001F600", dict["emoji"]);
         Assert.Equal($"{count}", dict["seq"]);
+        AssertFieldSet(line, "emoji", "seq");
         count++;
       }
 
@@ -259,6 +271,26 @@ namespace Logfmt.Tests
         var dict = ParseToDict(firstLine);
         Assert.Equal(value, dict["k"]);
         Assert.False(dict.ContainsKey("injected"));
+        AssertFieldSet(firstLine, "k");
+      }
+    }
+
+    private static void AssertFieldSet(string line, params string[] dataKeys)
+    {
+      var keys = new List<string>();
+      foreach (var kvp in LogfmtParser.Parse(line))
+      {
+        keys.Add(kvp.Key);
+      }
+
+      var expected = new List<string> { "ts", "level", "msg" };
+      expected.AddRange(dataKeys);
+
+      // Exactly these fields, each exactly once: catches dropped, duplicated, or leaked fields.
+      Assert.Equal(expected.Count, keys.Count);
+      foreach (var key in expected)
+      {
+        Assert.Single(keys, k => k == key);
       }
     }
 
