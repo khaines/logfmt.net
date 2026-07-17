@@ -46,6 +46,7 @@ namespace Logfmt.Tests
       Assert.Equal("/api/users", dict["Path"]);
       Assert.Equal("200", dict["StatusCode"]);
       Assert.Equal("12", dict["Elapsed"]);
+      AssertKeys(output, "ts", "level", "msg", "Method", "Path", "StatusCode", "Elapsed", "_OriginalFormat_");
     }
 
     /// <summary>
@@ -88,6 +89,7 @@ namespace Logfmt.Tests
 
       // The spaced exception message is quoted verbatim on the wire (defeats symmetric masking).
       Assert.Contains("exception_msg=\"payment gateway timeout\"", output);
+      AssertKeys(output, "ts", "level", "msg", "exception_msg", "exception_stack", "category", "OrderId", "_OriginalFormat_");
     }
 
     /// <summary>
@@ -118,20 +120,22 @@ namespace Logfmt.Tests
 
       var logger = loggerFactory.CreateLogger("Traced");
 
-      using (source.StartActivity("request"))
-      {
-        logger.LogInformation("handled request");
-      }
+      using var activity = source.StartActivity("request");
+      logger.LogInformation("handled request");
 
       outputStream.Seek(0, SeekOrigin.Begin);
       var output = new StreamReader(outputStream).ReadLine();
-
       var dict = ParseToDict(output);
 
-      // trace_id/span_id must be present with valid non-empty W3C hex ids -- not merely "trace_id="
-      // (a bare-key assertion would pass even if the ids were dropped/empty).
+      Assert.NotNull(activity);
+
+      // The exported ids must equal the active Activity's real (non-zero) W3C ids -- an all-zero or
+      // dropped id would still satisfy a length regex, so assert exact equality with the Activity.
+      Assert.Equal(activity!.TraceId.ToString(), dict["trace_id"]);
+      Assert.Equal(activity!.SpanId.ToString(), dict["span_id"]);
       Assert.Matches("^[0-9a-f]{32}$", dict["trace_id"]);
       Assert.Matches("^[0-9a-f]{16}$", dict["span_id"]);
+      AssertKeys(output, "ts", "level", "msg", "category", "trace_id", "span_id", "trace_flags", "_OriginalFormat_");
     }
 
     /// <summary>
@@ -154,6 +158,7 @@ namespace Logfmt.Tests
       Assert.Equal("1024", dict["value"]);
       Assert.Equal("count", dict["unit"]);
       Assert.Equal("/api/orders", dict["endpoint"]);
+      AssertKeys(output, "ts", "level", "msg", "metric", "value", "unit", "endpoint");
     }
 
     /// <summary>
@@ -165,20 +170,34 @@ namespace Logfmt.Tests
       var outputStream = new MemoryStream();
       using var logger = new Logger(outputStream);
 
-      logger.Info("audit event", "actor", "user:alice", "action", "DELETE", "resource", "/vault/secret-1", "outcome", "denied", "reason", "insufficient permissions");
+      // An adversarial audit value with a space, '=', a quote, and a newline must round-trip as a
+      // single field and cannot forge a field or split the record.
+      var reason = "insufficient permissions; token=\"abc\"\nlevel=fatal owned=1";
+      logger.Info("audit event", "actor", "user:alice", "action", "DELETE", "resource", "/vault/secret-1", "outcome", "denied", "reason", reason);
 
       outputStream.Seek(0, SeekOrigin.Begin);
-      var output = new StreamReader(outputStream).ReadLine();
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+      var secondLine = reader.ReadLine();
+
+      // Exactly one physical record: the embedded newline is escaped, not emitted raw.
+      Assert.Null(secondLine);
+
       var dict = ParseToDict(output);
 
       Assert.Equal("user:alice", dict["actor"]);
       Assert.Equal("DELETE", dict["action"]);
       Assert.Equal("/vault/secret-1", dict["resource"]);
       Assert.Equal("denied", dict["outcome"]);
-      Assert.Equal("insufficient permissions", dict["reason"]);
+      Assert.Equal(reason, dict["reason"]);
 
-      // The spaced value is quoted verbatim on the wire, not split into a forged field.
-      Assert.Contains("reason=\"insufficient permissions\"", output);
+      // The injection payload forged no field and left the real level unchanged.
+      Assert.False(dict.ContainsKey("owned"));
+      Assert.Equal("info", dict["level"]);
+
+      // The embedded quote is escaped on the wire (proving the value cannot break out of its field).
+      Assert.Contains("token=\\\"abc\\\"", output);
+      AssertKeys(output, "ts", "level", "msg", "actor", "action", "resource", "outcome", "reason");
     }
 
     /// <summary>
@@ -215,21 +234,25 @@ namespace Logfmt.Tests
       Assert.Equal("auth", login["source"]);
       Assert.Equal("alice", login["user"]);
       Assert.Equal("login ok", login["msg"]);
+      AssertKeys(lines[0], "ts", "level", "msg", "user", "source");
 
       var query = ParseToDict(lines[1]);
       Assert.Equal("db", query["source"]);
       Assert.Equal("42", query["rows"]);
       Assert.Equal("query executed", query["msg"]);
+      AssertKeys(lines[1], "ts", "level", "msg", "rows", "source");
 
       var request = ParseToDict(lines[2]);
       Assert.Equal("api", request["source"]);
       Assert.Equal("200", request["status"]);
       Assert.Equal("request served", request["msg"]);
+      AssertKeys(lines[2], "ts", "level", "msg", "status", "source");
 
       var logout = ParseToDict(lines[3]);
       Assert.Equal("auth", logout["source"]);
       Assert.Equal("alice", logout["user"]);
       Assert.Equal("logout", logout["msg"]);
+      AssertKeys(lines[3], "ts", "level", "msg", "user", "source");
     }
 
     private static ExtensionLoggerConfiguration AllEnabledConfig()
@@ -248,6 +271,22 @@ namespace Logfmt.Tests
       }
 
       return dict;
+    }
+
+    private static void AssertKeys(string line, params string[] expectedKeys)
+    {
+      var keys = new List<string>();
+      foreach (var kvp in LogfmtParser.Parse(line))
+      {
+        keys.Add(kvp.Key);
+      }
+
+      // Exactly the expected fields, each exactly once: catches dropped, duplicated, or leaked fields.
+      Assert.Equal(expectedKeys.Length, keys.Count);
+      foreach (var key in expectedKeys)
+      {
+        Assert.Single(keys, k => k == key);
+      }
     }
   }
 }
