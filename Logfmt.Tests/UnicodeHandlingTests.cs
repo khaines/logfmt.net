@@ -28,8 +28,12 @@ namespace Logfmt.Tests
       var output = new StreamReader(outputStream).ReadLine();
       var dict = ParseToDict(output);
 
-      // Raw wire form is verbatim, so a symmetric encode/decode bug cannot hide behind round-trip.
-      Assert.Contains("zh=\u4e2d\u6587", output);
+      // Raw wire form is verbatim (exact space-delimited tokens), so a symmetric encode/decode
+      // transform -- even a suffix -- cannot hide behind the round-trip.
+      var tokens = output.Split(' ');
+      Assert.Contains("zh=\u4e2d\u6587", tokens);
+      Assert.Contains("ja=\u3053\u3093\u306b\u3061\u306f", tokens);
+      Assert.Contains("ko=\uc548\ub155\ud558\uc138\uc694", tokens);
 
       Assert.Equal("\u4e2d\u6587", dict["zh"]);
       Assert.Equal("\u3053\u3093\u306b\u3061\u306f", dict["ja"]);
@@ -52,7 +56,7 @@ namespace Logfmt.Tests
       var output = new StreamReader(outputStream).ReadLine();
       var dict = ParseToDict(output);
 
-      Assert.Contains("emoji=" + emoji, output);
+      Assert.Contains("emoji=" + emoji, output.Split(' '));
       Assert.Equal(emoji, dict["emoji"]);
     }
 
@@ -72,7 +76,7 @@ namespace Logfmt.Tests
       var output = new StreamReader(outputStream).ReadLine();
       var dict = ParseToDict(output);
 
-      Assert.Contains("text=" + combined, output);
+      Assert.Contains("text=" + combined, output.Split(' '));
       Assert.Equal(combined, dict["text"]);
     }
 
@@ -92,7 +96,7 @@ namespace Logfmt.Tests
       var output = new StreamReader(outputStream).ReadLine();
       var dict = ParseToDict(output);
 
-      Assert.Contains("chars=" + surrogate, output);
+      Assert.Contains("chars=" + surrogate, output.Split(' '));
       Assert.Equal(surrogate, dict["chars"]);
     }
 
