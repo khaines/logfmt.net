@@ -319,25 +319,45 @@ namespace Logfmt.Tests
       outputStream.Seek(0, SeekOrigin.Begin);
       var output = new StreamReader(outputStream).ReadLine();
 
-      var fields = new Dictionary<string, string>();
-      foreach (var kvp in LogfmtParser.Parse(output))
+      // Parse into the ordered list of pairs (not a dictionary) so duplicate keys and reserved-name
+      // (ts/level) leaks are visible rather than silently collapsed.
+      var pairs = LogfmtParser.Parse(output);
+
+      // Exactly the two framework fields (ts, level) plus the state properties -- nothing dropped,
+      // duplicated, or leaked under any name.
+      Assert.Equal(count + 2, pairs.Count);
+
+      var seen = new Dictionary<string, string>();
+      var tsCount = 0;
+      var levelCount = 0;
+      foreach (var kvp in pairs)
       {
-        fields[kvp.Key] = kvp.Value;
+        if (kvp.Key == "ts")
+        {
+          tsCount++;
+        }
+        else if (kvp.Key == "level")
+        {
+          levelCount++;
+          Assert.Equal("info", kvp.Value);
+        }
+        else
+        {
+          Assert.False(seen.ContainsKey(kvp.Key), $"duplicate field {kvp.Key}");
+          seen[kvp.Key] = kvp.Value;
+        }
       }
 
-      // Every one of the properties must be present with its exact value; remove each as verified.
+      Assert.Equal(1, tsCount);
+      Assert.Equal(1, levelCount);
+      Assert.Equal(count, seen.Count);
+
+      // Every one of the properties is present exactly once with its exact value.
       for (int i = 0; i < count; i++)
       {
-        Assert.True(fields.TryGetValue($"key{i}", out var value), $"key{i} missing from output");
+        Assert.True(seen.TryGetValue($"key{i}", out var value), $"key{i} missing from output");
         Assert.Equal($"val{i}", value);
-        fields.Remove($"key{i}");
       }
-
-      // Only the framework-added fields may remain: no dropped, extra, or leaked state field of
-      // any name (not merely key-prefixed ones).
-      fields.Remove("ts");
-      fields.Remove("level");
-      Assert.Empty(fields);
     }
 
     /// <summary>
@@ -409,6 +429,38 @@ namespace Logfmt.Tests
 
       // Rendered via the top-level object's ToString() (its List type name), never traversed.
       Assert.Equal(deep.ToString(), fields["deep"]);
+    }
+
+    /// <summary>
+    /// Tests that the logger invokes a state value's ToString() exactly once and never re-renders it,
+    /// which is what makes deep and circular state graphs harmless.
+    /// </summary>
+    [Fact]
+    public void TestStateValueToStringIsInvokedExactlyOnce()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
+
+      var counter = new CountingToString();
+      var state = new Dictionary<string, object>
+      {
+        ["value"] = counter,
+      };
+
+      logger.Log(LogLevel.Information, new EventId(0), state, null, null);
+
+      Assert.Equal(1, counter.Count);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+
+      var fields = new Dictionary<string, string>();
+      foreach (var kvp in LogfmtParser.Parse(output))
+      {
+        fields[kvp.Key] = kvp.Value;
+      }
+
+      Assert.Equal("counted", fields["value"]);
     }
 
     /// <summary>
@@ -571,9 +623,21 @@ namespace Logfmt.Tests
       outputStream.Seek(0, SeekOrigin.Begin);
       var output = new StreamReader(outputStream).ReadLine();
 
-      Assert.Contains("k=third", output);
-      Assert.DoesNotContain("k=first", output);
-      Assert.DoesNotContain("k=second", output);
+      var fields = new Dictionary<string, string>();
+      var kCount = 0;
+      foreach (var kvp in LogfmtParser.Parse(output))
+      {
+        if (kvp.Key == "k")
+        {
+          kCount++;
+        }
+
+        fields[kvp.Key] = kvp.Value;
+      }
+
+      // Deduplicated to a single "k" field whose value is the last one written.
+      Assert.Equal(1, kCount);
+      Assert.Equal("third", fields["k"]);
     }
 
     /// <summary>
@@ -736,6 +800,17 @@ namespace Logfmt.Tests
     private sealed class Node
     {
       public Node Other { get; set; }
+    }
+
+    private sealed class CountingToString
+    {
+      public int Count { get; private set; }
+
+      public override string ToString()
+      {
+        this.Count++;
+        return "counted";
+      }
     }
 
     private sealed class ThrowingToString
