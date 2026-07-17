@@ -1,4 +1,11 @@
 ﻿using BenchmarkDotNet.Running;
-using Logfmt.Benchmarks;
 
-BenchmarkRunner.Run<LoggerBenchmarks>();
+var switcher = BenchmarkSwitcher.FromAssembly(typeof(Logfmt.Benchmarks.LoggerBenchmarks).Assembly);
+if (args.Length == 0)
+{
+    switcher.RunAll();
+}
+else
+{
+    switcher.Run(args);
+}
