@@ -346,7 +346,15 @@ namespace Logfmt.Tests
       Assert.Null(ex);
       outputStream.Seek(0, SeekOrigin.Begin);
       var output = new StreamReader(outputStream).ReadLine();
-      Assert.Contains("payload=", output);
+
+      var fields = new Dictionary<string, string>();
+      foreach (var kvp in LogfmtParser.Parse(output))
+      {
+        fields[kvp.Key] = kvp.Value;
+      }
+
+      // The nested object is rendered via its ToString() (the default type name here), not dropped/emptied.
+      Assert.Equal(nested.ToString(), fields["payload"]);
     }
 
     /// <summary>
