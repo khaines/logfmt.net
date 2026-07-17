@@ -39,11 +39,13 @@ namespace Logfmt.Tests
       outputStream.Seek(0, SeekOrigin.Begin);
       var output = new StreamReader(outputStream).ReadLine();
 
-      Assert.Contains("level=info", output);
-      Assert.Contains("Method=GET", output);
-      Assert.Contains("Path=/api/users", output);
-      Assert.Contains("StatusCode=200", output);
-      Assert.Contains("Elapsed=12", output);
+      var dict = ParseToDict(output);
+
+      Assert.Equal("info", dict["level"]);
+      Assert.Equal("GET", dict["Method"]);
+      Assert.Equal("/api/users", dict["Path"]);
+      Assert.Equal("200", dict["StatusCode"]);
+      Assert.Equal("12", dict["Elapsed"]);
     }
 
     /// <summary>
@@ -78,9 +80,14 @@ namespace Logfmt.Tests
       outputStream.Seek(0, SeekOrigin.Begin);
       var output = new StreamReader(outputStream).ReadLine();
 
-      Assert.Contains("level=error", output);
+      var dict = ParseToDict(output);
+
+      Assert.Equal("error", dict["level"]);
+      Assert.Equal("payment gateway timeout", dict["exception_msg"]);
+      Assert.Equal("4567", dict["OrderId"]);
+
+      // The spaced exception message is quoted verbatim on the wire (defeats symmetric masking).
       Assert.Contains("exception_msg=\"payment gateway timeout\"", output);
-      Assert.Contains("OrderId=4567", output);
     }
 
     /// <summary>
@@ -119,8 +126,12 @@ namespace Logfmt.Tests
       outputStream.Seek(0, SeekOrigin.Begin);
       var output = new StreamReader(outputStream).ReadLine();
 
-      Assert.Contains("trace_id=", output);
-      Assert.Contains("span_id=", output);
+      var dict = ParseToDict(output);
+
+      // trace_id/span_id must be present with valid non-empty W3C hex ids -- not merely "trace_id="
+      // (a bare-key assertion would pass even if the ids were dropped/empty).
+      Assert.Matches("^[0-9a-f]{32}$", dict["trace_id"]);
+      Assert.Matches("^[0-9a-f]{16}$", dict["span_id"]);
     }
 
     /// <summary>
@@ -137,10 +148,12 @@ namespace Logfmt.Tests
       outputStream.Seek(0, SeekOrigin.Begin);
       var output = new StreamReader(outputStream).ReadLine();
 
-      Assert.Contains("metric=http_requests_total", output);
-      Assert.Contains("value=1024", output);
-      Assert.Contains("unit=count", output);
-      Assert.Contains("endpoint=/api/orders", output);
+      var dict = ParseToDict(output);
+
+      Assert.Equal("http_requests_total", dict["metric"]);
+      Assert.Equal("1024", dict["value"]);
+      Assert.Equal("count", dict["unit"]);
+      Assert.Equal("/api/orders", dict["endpoint"]);
     }
 
     /// <summary>
@@ -163,6 +176,9 @@ namespace Logfmt.Tests
       Assert.Equal("/vault/secret-1", dict["resource"]);
       Assert.Equal("denied", dict["outcome"]);
       Assert.Equal("insufficient permissions", dict["reason"]);
+
+      // The spaced value is quoted verbatim on the wire, not split into a forged field.
+      Assert.Contains("reason=\"insufficient permissions\"", output);
     }
 
     /// <summary>
@@ -192,9 +208,28 @@ namespace Logfmt.Tests
       }
 
       Assert.Equal(4, lines.Count);
-      Assert.Contains(lines, l => l.Contains("source=auth") && l.Contains("user=alice"));
-      Assert.Contains(lines, l => l.Contains("source=db") && l.Contains("rows=42"));
-      Assert.Contains(lines, l => l.Contains("source=api") && l.Contains("status=200"));
+
+      // Order is deterministic (sequential writes to one stream); assert each record exactly,
+      // including the final auth "logout" line the substring checks previously skipped.
+      var login = ParseToDict(lines[0]);
+      Assert.Equal("auth", login["source"]);
+      Assert.Equal("alice", login["user"]);
+      Assert.Equal("login ok", login["msg"]);
+
+      var query = ParseToDict(lines[1]);
+      Assert.Equal("db", query["source"]);
+      Assert.Equal("42", query["rows"]);
+      Assert.Equal("query executed", query["msg"]);
+
+      var request = ParseToDict(lines[2]);
+      Assert.Equal("api", request["source"]);
+      Assert.Equal("200", request["status"]);
+      Assert.Equal("request served", request["msg"]);
+
+      var logout = ParseToDict(lines[3]);
+      Assert.Equal("auth", logout["source"]);
+      Assert.Equal("alice", logout["user"]);
+      Assert.Equal("logout", logout["msg"]);
     }
 
     private static ExtensionLoggerConfiguration AllEnabledConfig()
