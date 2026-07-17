@@ -441,7 +441,15 @@ namespace Logfmt.Tests
 
       outputStream.Seek(0, SeekOrigin.Begin);
       var output = new StreamReader(outputStream).ReadLine();
-      Assert.Contains("node=", output);
+
+      var fields = new Dictionary<string, string>();
+      foreach (var kvp in LogfmtParser.Parse(output))
+      {
+        fields[kvp.Key] = kvp.Value;
+      }
+
+      // Rendered via the node's own ToString() exactly once (never traversed), so the cycle is harmless.
+      Assert.Equal(a.ToString(), fields["node"]);
     }
 
     /// <summary>
