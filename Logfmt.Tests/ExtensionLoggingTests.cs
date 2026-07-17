@@ -485,15 +485,36 @@ namespace Logfmt.Tests
       Assert.Empty(exceptions);
       outputStream.Seek(0, SeekOrigin.Begin);
       var reader = new StreamReader(outputStream);
+      var seen = new HashSet<string>();
       var count = 0;
       string line;
       while ((line = reader.ReadLine()) != null)
       {
         Assert.StartsWith("ts=", line);
+
+        var fields = new Dictionary<string, string>();
+        foreach (var kvp in LogfmtParser.Parse(line))
+        {
+          fields[kvp.Key] = kvp.Value;
+        }
+
+        Assert.True(fields.TryGetValue("thread", out var thread), "thread field missing from a log line");
+        Assert.True(fields.TryGetValue("iter", out var iter), "iter field missing from a log line");
+        var pair = thread + ":" + iter;
+        Assert.True(seen.Add(pair), $"duplicate entry {pair}");
         count++;
       }
 
+      // Every (thread, iter) pair was logged exactly once: no throw, no drop, no duplication.
       Assert.Equal(400, count);
+      Assert.Equal(400, seen.Count);
+      for (int t = 0; t < 8; t++)
+      {
+        for (int i = 0; i < 50; i++)
+        {
+          Assert.Contains(t + ":" + i, seen);
+        }
+      }
     }
 
     /// <summary>
