@@ -327,13 +327,14 @@ public sealed class Logger : IDisposable
         for (int i = 0; i < value.Length; i++)
         {
             char c = value[i];
-            if (c == ' ' || c == '\t')
+            if (c == '"' || c == '\\' || c == '\r' || c == '\n')
             {
                 needsQuotes = true;
-            }
-            else if (c == '"' || c == '\\' || c == '\r' || c == '\n')
-            {
                 hasSpecialChars = true;
+            }
+            else if (c <= ' ')
+            {
+                needsQuotes = true;
             }
         }
 

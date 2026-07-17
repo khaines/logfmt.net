@@ -414,7 +414,7 @@ namespace Logfmt.Tests
       var reader = new StreamReader(outputStream);
       var output = reader.ReadLine();
 
-      Assert.Contains("data=line1\\r\\nline2", output);
+      Assert.Contains("data=\"line1\\r\\nline2\"", output);
     }
 
     /// <summary>
@@ -629,7 +629,7 @@ namespace Logfmt.Tests
       var reader = new StreamReader(outputStream);
       var output = reader.ReadLine();
 
-      Assert.Contains("path=C:\\\\Users\\\\test", output);
+      Assert.Contains("path=\"C:\\\\Users\\\\test\"", output);
     }
 
     /// <summary>

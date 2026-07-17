@@ -210,9 +210,8 @@ namespace Logfmt.Tests
 
       Assert.Equal("line1\nline2", dict["msg"]);
 
-      // Backslashes are escaped in unquoted values by the Logger,
-      // so the parser returns the literal escaped form
-      Assert.Contains("Users", dict["path"]);
+      // The encoder quotes and escapes the backslash value, so it round-trips exactly.
+      Assert.Equal("C:\\Users\\test", dict["path"]);
     }
 
     /// <summary>
@@ -251,10 +250,12 @@ namespace Logfmt.Tests
     }
 
     /// <summary>
-    /// Tests that a key made up entirely of non-identifier characters is treated as a bare key.
+    /// Tests that a key made up entirely of punctuation identifier characters is treated as a bare key.
+    /// Under the kr/logfmt grammar '!' is a valid ident char (> ' '), so "!!!invalid" is a
+    /// legitimate bare key with no '=' sign.
     /// </summary>
     [Fact]
-    public void ParseKeyWithOnlyInvalidCharsIsBareKey()
+    public void ParseBareKeyWithPunctuationChars()
     {
       var result = LogfmtParser.Parse("!!!invalid");
 
@@ -265,15 +266,55 @@ namespace Logfmt.Tests
 
     /// <summary>
     /// Tests parsing an unquoted value that ends at EOF without a trailing space.
+    /// Both an EOF-terminated value and a trailing-space-terminated value yield the same value,
+    /// proving the trailing space is skipped garbage and EOF termination is equivalent.
     /// </summary>
     [Fact]
     public void ParseValueEndingAtEofWithoutTrailingSpace()
     {
-      var result = LogfmtParser.Parse("key=value");
+      var eof = LogfmtParser.Parse("key=value");
+
+      Assert.Single(eof);
+      Assert.Equal("key", eof[0].Key);
+      Assert.Equal("value", eof[0].Value);
+
+      var trailingSpace = LogfmtParser.Parse("key=value ");
+
+      Assert.Single(trailingSpace);
+      Assert.Equal("key", trailingSpace[0].Key);
+      Assert.Equal("value", trailingSpace[0].Value);
+    }
+
+    /// <summary>
+    /// Tests that raw carriage return and newline characters act as delimiters,
+    /// since both are &lt;= ' ' under the kr/logfmt grammar.
+    /// </summary>
+    [Fact]
+    public void ParseCarriageReturnAndNewlineActAsDelimiters()
+    {
+      var result = LogfmtParser.Parse("a=1\rb=2\nc=3");
+
+      Assert.Equal(3, result.Count);
+      Assert.Equal("a", result[0].Key);
+      Assert.Equal("1", result[0].Value);
+      Assert.Equal("b", result[1].Key);
+      Assert.Equal("2", result[1].Value);
+      Assert.Equal("c", result[2].Key);
+      Assert.Equal("3", result[2].Value);
+    }
+
+    /// <summary>
+    /// Tests that a backslash before a non-escape character in an unquoted value is preserved
+    /// verbatim, since unquoted values are not un-escaped (issue #54 key=foo\bar criterion).
+    /// </summary>
+    [Fact]
+    public void ParseUnquotedBackslashBeforeNonEscapeChar()
+    {
+      var result = LogfmtParser.Parse("key=foo\\bar");
 
       Assert.Single(result);
       Assert.Equal("key", result[0].Key);
-      Assert.Equal("value", result[0].Value);
+      Assert.Equal("foo\\bar", result[0].Value);
     }
 
     /// <summary>

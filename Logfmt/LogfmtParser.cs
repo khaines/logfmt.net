@@ -25,7 +25,7 @@ public static class LogfmtParser
 
         while (pos < len)
         {
-            // Skip garbage (any byte <= ' ' per the kr/logfmt grammar)
+            // Skip garbage (any char (UTF-16 code unit) <= ' ' per the kr/logfmt grammar)
             while (pos < len && line[pos] <= ' ')
             {
                 pos++;
@@ -36,7 +36,7 @@ public static class LogfmtParser
                 break;
             }
 
-            // Parse key (ident bytes are any byte > ' ', excluding '=')
+            // Parse key (ident bytes are any char (UTF-16 code unit) > ' ', excluding '=')
             int keyStart = pos;
             while (pos < len && line[pos] != '=' && line[pos] > ' ')
             {
@@ -72,7 +72,7 @@ public static class LogfmtParser
             }
             else
             {
-                // Unquoted value (ident bytes are any byte > ' ')
+                // Unquoted value (ident bytes are any char (UTF-16 code unit) > ' ')
                 int valueStart = pos;
                 while (pos < len && line[pos] > ' ')
                 {
