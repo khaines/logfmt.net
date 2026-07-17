@@ -699,12 +699,20 @@ namespace Logfmt.Tests
 
       outputStream.Seek(0, SeekOrigin.Begin);
       var reader = new StreamReader(outputStream);
+      var validLevels = new HashSet<string> { "trace", "debug", "info", "warn", "error", "fatal" };
       var lineCount = 0;
       string outLine;
       while ((outLine = reader.ReadLine()) != null)
       {
-        Assert.StartsWith("ts=", outLine);
-        Assert.Contains("level=", outLine);
+        var fields = new Dictionary<string, string>();
+        foreach (var kvp in LogfmtParser.Parse(outLine))
+        {
+          fields[kvp.Key] = kvp.Value;
+        }
+
+        Assert.True(fields.ContainsKey("ts"), $"missing ts in: {outLine}");
+        Assert.True(fields.TryGetValue("level", out var lvl) && validLevels.Contains(lvl), $"invalid level in: {outLine}");
+        Assert.Equal("concurrent", fields["msg"]);
         lineCount++;
       }
 
@@ -738,6 +746,36 @@ namespace Logfmt.Tests
 
       Assert.Single(lines);
       Assert.Contains("msg=\"before off\"", lines[0]);
+    }
+
+    /// <summary>
+    /// Tests that a logger created (via WithData) after a filter change inherits the parent's
+    /// filter as of creation time — issue #56's "logger instance recreation after filter changes".
+    /// </summary>
+    [Fact]
+    public void LoggerCreatedAfterFilterChangeInheritsCurrentFilter()
+    {
+      var outputStream = new MemoryStream();
+      var baseLogger = new Logger(outputStream, SeverityLevel.Info);
+
+      baseLogger.SetSeverityFilter(SeverityLevel.Error);
+      var derived = baseLogger.WithData("scope", "derived");
+
+      derived.Info("dropped by inherited filter");
+      derived.Error("passes inherited filter");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var lines = new List<string>();
+      string line;
+      while ((line = reader.ReadLine()) != null)
+      {
+        lines.Add(line);
+      }
+
+      Assert.Single(lines);
+      Assert.Contains("msg=\"passes inherited filter\"", lines[0]);
+      Assert.DoesNotContain("dropped", lines[0]);
     }
 
     /// <summary>
