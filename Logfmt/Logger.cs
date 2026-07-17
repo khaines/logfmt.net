@@ -39,7 +39,7 @@ public sealed class Logger : IDisposable
     private readonly object _writeLock;
     private List<KeyValuePair<string, string>> includedData;
 
-    private SeverityLevel levelFilter;
+    private volatile SeverityLevel levelFilter;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Logger"/> class.
@@ -263,7 +263,10 @@ public sealed class Logger : IDisposable
     /// <returns>true if enabled.</returns>
     public bool IsEnabled(SeverityLevel level)
     {
-        return levelFilter != SeverityLevel.Off && level >= levelFilter;
+        // Read the volatile field once so a concurrent SetSeverityFilter cannot make the two
+        // comparisons observe different filter values.
+        var filter = levelFilter;
+        return filter != SeverityLevel.Off && level >= filter;
     }
 
     /// <summary>

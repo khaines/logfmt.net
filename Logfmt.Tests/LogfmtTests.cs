@@ -699,12 +699,45 @@ namespace Logfmt.Tests
 
       outputStream.Seek(0, SeekOrigin.Begin);
       var reader = new StreamReader(outputStream);
+      var lineCount = 0;
       string outLine;
       while ((outLine = reader.ReadLine()) != null)
       {
         Assert.StartsWith("ts=", outLine);
         Assert.Contains("level=", outLine);
+        lineCount++;
       }
+
+      // The filter only ever cycles through non-Off levels, so some entries always pass; guard
+      // against a vacuous pass where the per-line assertions above never execute.
+      Assert.True(lineCount > 0, "expected some log lines to be emitted");
+    }
+
+    /// <summary>
+    /// Tests that setting the severity filter to Off mid-stream drops subsequent entries.
+    /// </summary>
+    [Fact]
+    public void SetSeverityFilterToOffMidStreamDropsSubsequent()
+    {
+      var outputStream = new MemoryStream();
+      var logger = new Logger(outputStream, SeverityLevel.Info);
+
+      logger.Error("before off");
+      logger.SetSeverityFilter(SeverityLevel.Off);
+      logger.Error("after off");
+      logger.Log(SeverityLevel.Fatal, "also after off");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var lines = new List<string>();
+      string line;
+      while ((line = reader.ReadLine()) != null)
+      {
+        lines.Add(line);
+      }
+
+      Assert.Single(lines);
+      Assert.Contains("msg=\"before off\"", lines[0]);
     }
 
     /// <summary>
