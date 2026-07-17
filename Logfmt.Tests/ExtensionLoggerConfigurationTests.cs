@@ -26,6 +26,13 @@ namespace Logfmt.Tests
 
       Assert.False(logger.IsEnabled(LogLevel.Information));
       Assert.False(logger.IsEnabled(LogLevel.Error));
+
+      // Positive control: the same provider type does enable a configured category, so the
+      // assertions above reflect the empty config -- not a trivially always-disabled provider.
+      var enabledConfig = new ExtensionLoggerConfiguration();
+      enabledConfig.LogLevel["SomeCategory"] = LogLevel.Information;
+      using var enabledProvider = new ExtensionLoggerProvider(new ChangeableOptionsMonitor(enabledConfig));
+      Assert.True(enabledProvider.CreateLogger("SomeCategory").IsEnabled(LogLevel.Information));
     }
 
     /// <summary>
@@ -42,6 +49,7 @@ namespace Logfmt.Tests
       var logger = provider.CreateLogger("cat");
 
       Assert.True(logger.IsEnabled(LogLevel.Debug));
+      Assert.False(logger.IsEnabled(LogLevel.Trace));
     }
 
     /// <summary>
@@ -75,6 +83,12 @@ namespace Logfmt.Tests
 
       Assert.False(logger.IsEnabled(LogLevel.Information));
       Assert.False(logger.IsEnabled(LogLevel.Error));
+
+      // Positive control: the configured "specific" category IS enabled on the same provider,
+      // proving "unknown" is disabled by config resolution, not a trivially broken provider.
+      var known = provider.CreateLogger("specific");
+      Assert.True(known.IsEnabled(LogLevel.Debug));
+      Assert.False(known.IsEnabled(LogLevel.Trace));
     }
 
     /// <summary>
@@ -96,12 +110,14 @@ namespace Logfmt.Tests
       monitor.Set(lowered);
 
       Assert.True(logger.IsEnabled(LogLevel.Debug));
+      Assert.False(logger.IsEnabled(LogLevel.Trace));
 
       var raised = new ExtensionLoggerConfiguration();
       raised.LogLevel["Default"] = LogLevel.Error;
       monitor.Set(raised);
 
       Assert.False(logger.IsEnabled(LogLevel.Debug));
+      Assert.False(logger.IsEnabled(LogLevel.Warning));
       Assert.True(logger.IsEnabled(LogLevel.Error));
     }
 
@@ -138,6 +154,7 @@ namespace Logfmt.Tests
       var logger = provider.CreateLogger("mycategory");
 
       Assert.True(logger.IsEnabled(LogLevel.Debug));
+      Assert.False(logger.IsEnabled(LogLevel.Trace));
     }
 
     /// <summary>
