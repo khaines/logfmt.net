@@ -172,6 +172,14 @@ namespace Logfmt.Tests
       var output = new StreamReader(outputStream).ReadLine();
       var dict = ParseToDict(output);
 
+      // Raw wire form: exact tokens for the space-free values, and the full quoted literal for the
+      // (always-quoted) msg, so a symmetric encode/decode transform cannot hide behind round-trip.
+      var tokens = output.Split(' ');
+      Assert.Contains("emoji=\U0001F44D\U0001F3FD", tokens);
+      Assert.Contains("accent=caf\u00e9", tokens);
+      Assert.Contains("cjk=\u65e5\u672c\u8a9e", tokens);
+      Assert.Contains("msg=\"\u4e2d\u6587 message \U0001F600\"", output);
+
       Assert.Equal("\u4e2d\u6587 message \U0001F600", dict["msg"]);
       Assert.Equal("\U0001F44D\U0001F3FD", dict["emoji"]);
       Assert.Equal("caf\u00e9", dict["accent"]);
@@ -199,6 +207,12 @@ namespace Logfmt.Tests
       string line;
       while ((line = reader.ReadLine()) != null)
       {
+        // Raw wire tokens (msg is always quoted) plus the parsed round-trip, per line.
+        var tokens = line.Split(' ');
+        Assert.Contains("msg=\"\u4e2d\u6587\"", tokens);
+        Assert.Contains("emoji=\U0001F600", tokens);
+        Assert.Contains($"seq={count}", tokens);
+
         var dict = ParseToDict(line);
         Assert.Equal("\u4e2d\u6587", dict["msg"]);
         Assert.Equal("\U0001F600", dict["emoji"]);
@@ -231,6 +245,10 @@ namespace Logfmt.Tests
 
         // Exactly one record: the unicode separator did not start a new line.
         Assert.Null(secondLine);
+
+        // The value (with the separator) is emitted verbatim as a single unquoted token, so a
+        // symmetric wire transform of the separator cannot hide behind the parser round-trip.
+        Assert.Contains("k=" + value, firstLine.Split(' '));
 
         // The separator is not a delimiter: the value stays intact in one field, with no forged key.
         var dict = ParseToDict(firstLine);
