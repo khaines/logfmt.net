@@ -326,7 +326,7 @@ namespace Logfmt.Tests
     /// Tests that a formatter returning an empty string produces an empty quoted message.
     /// </summary>
     [Fact]
-    public void FormatterReturningEmptyStringIsHandled()
+    public void TestFormatterReturningEmptyStringIsHandled()
     {
       var outputStream = new MemoryStream();
       ILogger logger = new ExtensionLogger(new Logger(outputStream), this.GetConfiguration, "test");
@@ -346,10 +346,13 @@ namespace Logfmt.Tests
     }
 
     /// <summary>
-    /// Tests that a formatter throwing ArgumentNullException does not crash the logger.
+    /// Tests that a formatter exception whose message contains logfmt-significant characters
+    /// (quotes, newlines, an embedded key=value) is escaped into a single record and cannot inject
+    /// a forged log entry through the FORMATTER ERROR path. Also exercises the throw path (a distinct
+    /// exception type) so a narrowed catch would be caught.
     /// </summary>
     [Fact]
-    public void FormatterThrowingArgumentNullExceptionDoesNotCrash()
+    public void TestFormatterExceptionMessageWithSpecialCharsIsEscaped()
     {
       var outputStream = new MemoryStream();
       ILogger logger = new ExtensionLogger(new Logger(outputStream), this.GetConfiguration, "test");
@@ -359,20 +362,40 @@ namespace Logfmt.Tests
           new EventId(0),
           "state",
           null,
-          (Func<string, Exception, string>)((s, e) => throw new ArgumentNullException("param")));
+          (Func<string, Exception, string>)((s, e) => throw new InvalidOperationException("evil\"\nlevel=fatal msg=owned")));
 
       outputStream.Seek(0, SeekOrigin.Begin);
       var reader = new StreamReader(outputStream);
-      var output = reader.ReadLine();
+      var firstLine = reader.ReadLine();
+      var secondLine = reader.ReadLine();
 
-      Assert.Contains("FORMATTER ERROR", output);
+      // The exception message must be escaped into ONE record, not split into a forged second entry.
+      Assert.Null(secondLine);
+
+      string msg = null;
+      var levelCount = 0;
+      foreach (var kvp in LogfmtParser.Parse(firstLine))
+      {
+        if (kvp.Key == "msg")
+        {
+          msg = kvp.Value;
+        }
+
+        if (kvp.Key == "level")
+        {
+          levelCount++;
+        }
+      }
+
+      Assert.Equal(1, levelCount);
+      Assert.Equal("[FORMATTER ERROR: evil\"\nlevel=fatal msg=owned]", msg);
     }
 
     /// <summary>
     /// Tests that a formatter failing on an external resource (simulated via IOException) does not crash the logger.
     /// </summary>
     [Fact]
-    public void FormatterThrowingIOExceptionDoesNotCrash()
+    public void TestFormatterThrowingIOExceptionDoesNotCrash()
     {
       var outputStream = new MemoryStream();
       ILogger logger = new ExtensionLogger(new Logger(outputStream), this.GetConfiguration, "test");
@@ -396,7 +419,7 @@ namespace Logfmt.Tests
     /// Tests that a formatter returning a very long string (over 64KB) is handled.
     /// </summary>
     [Fact]
-    public void FormatterWithVeryLongOutputIsHandled()
+    public void TestFormatterWithVeryLongOutputIsHandled()
     {
       var outputStream = new MemoryStream();
       ILogger logger = new ExtensionLogger(new Logger(outputStream), this.GetConfiguration, "test");
@@ -420,7 +443,7 @@ namespace Logfmt.Tests
     /// Tests that a formatter returning null on every call is handled consistently.
     /// </summary>
     [Fact]
-    public void FormatterReturningNullConsistentlyIsHandled()
+    public void TestFormatterReturningNullConsistentlyIsHandled()
     {
       var outputStream = new MemoryStream();
       ILogger logger = new ExtensionLogger(new Logger(outputStream), this.GetConfiguration, "test");
@@ -452,7 +475,7 @@ namespace Logfmt.Tests
     /// Tests that special characters in formatter output are escaped and round-trip correctly.
     /// </summary>
     [Fact]
-    public void FormatterOutputWithSpecialCharactersIsEscaped()
+    public void TestFormatterOutputWithSpecialCharactersIsEscaped()
     {
       var outputStream = new MemoryStream();
       ILogger logger = new ExtensionLogger(new Logger(outputStream), this.GetConfiguration, "test");
