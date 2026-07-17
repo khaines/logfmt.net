@@ -307,8 +307,9 @@ namespace Logfmt.Tests
       var outputStream = new MemoryStream();
       ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
 
+      const int count = 1500;
       var state = new Dictionary<string, object>();
-      for (int i = 0; i < 1500; i++)
+      for (int i = 0; i < count; i++)
       {
         state[$"key{i}"] = $"val{i}";
       }
@@ -318,9 +319,30 @@ namespace Logfmt.Tests
       outputStream.Seek(0, SeekOrigin.Begin);
       var output = new StreamReader(outputStream).ReadLine();
 
-      Assert.Contains("key0=val0", output);
-      Assert.Contains("key750=val750", output);
-      Assert.Contains("key1499=val1499", output);
+      var fields = new Dictionary<string, string>();
+      foreach (var kvp in LogfmtParser.Parse(output))
+      {
+        fields[kvp.Key] = kvp.Value;
+      }
+
+      // Every one of the properties must be present with its exact value: no silent drops.
+      for (int i = 0; i < count; i++)
+      {
+        Assert.True(fields.TryGetValue($"key{i}", out var value), $"key{i} missing from output");
+        Assert.Equal($"val{i}", value);
+      }
+
+      // And exactly that many state properties were emitted (no drops, no extras).
+      var keyFieldCount = 0;
+      foreach (var key in fields.Keys)
+      {
+        if (key.StartsWith("key", StringComparison.Ordinal))
+        {
+          keyFieldCount++;
+        }
+      }
+
+      Assert.Equal(count, keyFieldCount);
     }
 
     /// <summary>
@@ -355,6 +377,43 @@ namespace Logfmt.Tests
 
       // The nested object is rendered via its ToString() (the default type name here), not dropped/emptied.
       Assert.Equal(nested.ToString(), fields["payload"]);
+    }
+
+    /// <summary>
+    /// Tests that a very deeply nested state value cannot cause recursion or a StackOverflow,
+    /// because the logger renders each value via ToString() exactly once and never traverses graphs.
+    /// </summary>
+    [Fact]
+    public void TestDeeplyNestedStateValueIsRenderedWithoutRecursion()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
+
+      object deep = "leaf";
+      for (int i = 0; i < 10000; i++)
+      {
+        deep = new List<object> { deep };
+      }
+
+      var state = new Dictionary<string, object>
+      {
+        ["deep"] = deep,
+      };
+
+      var ex = Record.Exception(() => logger.Log(LogLevel.Information, new EventId(0), state, null, null));
+
+      Assert.Null(ex);
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+
+      var fields = new Dictionary<string, string>();
+      foreach (var kvp in LogfmtParser.Parse(output))
+      {
+        fields[kvp.Key] = kvp.Value;
+      }
+
+      // Rendered via the top-level object's ToString() (its List type name), never traversed.
+      Assert.Equal(deep.ToString(), fields["deep"]);
     }
 
     /// <summary>
