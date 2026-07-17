@@ -323,6 +323,165 @@ namespace Logfmt.Tests
     }
 
     /// <summary>
+    /// Tests that a formatter returning an empty string produces an empty quoted message.
+    /// </summary>
+    [Fact]
+    public void FormatterReturningEmptyStringIsHandled()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream), this.GetConfiguration, "test");
+
+      logger.Log(
+          LogLevel.Information,
+          new EventId(0),
+          "state",
+          null,
+          (Func<string, Exception, string>)((s, e) => string.Empty));
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("msg=\"\"", output);
+    }
+
+    /// <summary>
+    /// Tests that a formatter throwing ArgumentNullException does not crash the logger.
+    /// </summary>
+    [Fact]
+    public void FormatterThrowingArgumentNullExceptionDoesNotCrash()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream), this.GetConfiguration, "test");
+
+      logger.Log(
+          LogLevel.Information,
+          new EventId(0),
+          "state",
+          null,
+          (Func<string, Exception, string>)((s, e) => throw new ArgumentNullException("param")));
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("FORMATTER ERROR", output);
+    }
+
+    /// <summary>
+    /// Tests that a formatter failing on an external resource (simulated via IOException) does not crash the logger.
+    /// </summary>
+    [Fact]
+    public void FormatterThrowingIOExceptionDoesNotCrash()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream), this.GetConfiguration, "test");
+
+      logger.Log(
+          LogLevel.Information,
+          new EventId(0),
+          "state",
+          null,
+          (Func<string, Exception, string>)((s, e) => throw new IOException("network unavailable")));
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("FORMATTER ERROR", output);
+      Assert.Contains("network unavailable", output);
+    }
+
+    /// <summary>
+    /// Tests that a formatter returning a very long string (over 64KB) is handled.
+    /// </summary>
+    [Fact]
+    public void FormatterWithVeryLongOutputIsHandled()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream), this.GetConfiguration, "test");
+
+      var big = new string('L', 100000);
+      logger.Log(
+          LogLevel.Information,
+          new EventId(0),
+          "state",
+          null,
+          (Func<string, Exception, string>)((s, e) => big));
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      Assert.Contains("msg=\"" + big + "\"", output);
+    }
+
+    /// <summary>
+    /// Tests that a formatter returning null on every call is handled consistently.
+    /// </summary>
+    [Fact]
+    public void FormatterReturningNullConsistentlyIsHandled()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream), this.GetConfiguration, "test");
+
+      for (int i = 0; i < 5; i++)
+      {
+        logger.Log(
+            LogLevel.Information,
+            new EventId(0),
+            "state",
+            null,
+            (Func<string, Exception, string>)((s, e) => null));
+      }
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var count = 0;
+      string line;
+      while ((line = reader.ReadLine()) != null)
+      {
+        Assert.Contains("msg=null", line);
+        count++;
+      }
+
+      Assert.Equal(5, count);
+    }
+
+    /// <summary>
+    /// Tests that special characters in formatter output are escaped and round-trip correctly.
+    /// </summary>
+    [Fact]
+    public void FormatterOutputWithSpecialCharactersIsEscaped()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream), this.GetConfiguration, "test");
+
+      var formatted = "say \"hi\"\nbye";
+      logger.Log(
+          LogLevel.Information,
+          new EventId(0),
+          "state",
+          null,
+          (Func<string, Exception, string>)((s, e) => formatted));
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+
+      string msg = null;
+      foreach (var kvp in LogfmtParser.Parse(output))
+      {
+        if (kvp.Key == "msg")
+        {
+          msg = kvp.Value;
+        }
+      }
+
+      Assert.Equal(formatted, msg);
+    }
+
+    /// <summary>
     /// Tests that AddLogfmt registers the provider via ILoggingBuilder.
     /// </summary>
     [Fact]
