@@ -80,8 +80,14 @@ public sealed class Logger : IDisposable
     /// <inheritdoc/>
     public void Dispose()
     {
-        _output?.Dispose();
-        _outputStream?.Dispose();
+        // Synchronize disposal with the write critical section so a concurrent Log() cannot be
+        // left writing to a disposed stream/writer (which is not thread-safe). WithData-derived
+        // loggers share this lock and the underlying stream, so this also orders sibling writes.
+        lock (_writeLock)
+        {
+            _output?.Dispose();
+            _outputStream?.Dispose();
+        }
     }
 
     /// <summary>
@@ -184,11 +190,11 @@ public sealed class Logger : IDisposable
                     _output.WriteLine(buffer.ToString());
                     _output.Flush();
                 }
-                catch (ObjectDisposedException)
+                catch (Exception ex) when (ex is ObjectDisposedException or IOException or NotSupportedException)
                 {
-                    // The stream or writer was disposed concurrently (e.g. Dispose called
-                    // on another thread); drop this entry rather than surface an exception
-                    // to the caller.
+                    // The stream or writer failed or was disposed (e.g. Dispose on another thread,
+                    // a broken pipe, or a non-writable stream); drop this entry rather than surface
+                    // an exception to the caller, per the never-throw-on-bad-stream contract.
                 }
             }
         }

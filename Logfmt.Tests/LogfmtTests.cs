@@ -1251,11 +1251,52 @@ namespace Logfmt.Tests
       }
 
       await System.Threading.Tasks.Task.Delay(50);
-      logger.Dispose();
+      try
+      {
+        logger.Dispose();
+      }
+      catch (Exception ex)
+      {
+        exceptions.Add(ex);
+      }
+
       cts.Cancel();
       await System.Threading.Tasks.Task.WhenAll(writers);
 
       Assert.Empty(exceptions);
+    }
+
+    /// <summary>
+    /// Deterministically tests that Dispose serializes against an in-flight write via the write lock:
+    /// while a Log is blocked mid-write (holding the lock), a concurrent Dispose must not proceed and
+    /// must not throw. This pins the fix — with Dispose unlocked it would dispose the stream while the
+    /// write is in flight, so <c>disposedWhileWriteInFlight</c> would be true and this test would fail.
+    /// </summary>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Fact]
+    public async System.Threading.Tasks.Task DisposeSerializesAgainstInFlightWrite()
+    {
+      using var stream = new BlockingStream();
+      var logger = new Logger(stream);
+
+      var writerTask = System.Threading.Tasks.Task.Run(() => logger.Info("blocking write"));
+      Assert.True(stream.WaitUntilWriteEntered(System.TimeSpan.FromSeconds(5)), "writer did not enter Write");
+
+      using var disposeReturned = new System.Threading.ManualResetEventSlim(false);
+      var disposeTask = System.Threading.Tasks.Task.Run(() =>
+      {
+        logger.Dispose();
+        disposeReturned.Set();
+      });
+
+      var disposedWhileWriteInFlight = disposeReturned.Wait(System.TimeSpan.FromMilliseconds(300));
+
+      stream.ReleaseWrite();
+
+      var ex = await Record.ExceptionAsync(() => System.Threading.Tasks.Task.WhenAll(writerTask, disposeTask));
+
+      Assert.Null(ex);
+      Assert.False(disposedWhileWriteInFlight, "Dispose must wait for the in-flight write (serialized via the write lock)");
     }
 
     /// <summary>
@@ -1270,6 +1311,56 @@ namespace Logfmt.Tests
 
       /// <inheritdoc/>
       public override bool CanWrite => this.Writable;
+    }
+
+    /// <summary>
+    /// A <see cref="MemoryStream"/> whose write blocks until released, to deterministically hold a
+    /// write in flight (inside the logger's write lock) while another thread disposes the logger.
+    /// </summary>
+    private sealed class BlockingStream : MemoryStream
+    {
+      private readonly System.Threading.ManualResetEventSlim writeEntered = new System.Threading.ManualResetEventSlim(false);
+      private readonly System.Threading.ManualResetEventSlim release = new System.Threading.ManualResetEventSlim(false);
+
+      /// <summary>
+      /// Blocks until the stream's Write has been entered, or the timeout elapses.
+      /// </summary>
+      /// <param name="timeout">The maximum time to wait.</param>
+      /// <returns>true if Write was entered before the timeout.</returns>
+      public bool WaitUntilWriteEntered(System.TimeSpan timeout) => this.writeEntered.Wait(timeout);
+
+      /// <summary>
+      /// Releases the blocked Write so it can complete.
+      /// </summary>
+      public void ReleaseWrite() => this.release.Set();
+
+      /// <inheritdoc/>
+      public override void Write(byte[] buffer, int offset, int count)
+      {
+        this.writeEntered.Set();
+        this.release.Wait();
+        base.Write(buffer, offset, count);
+      }
+
+      /// <inheritdoc/>
+      public override void Write(ReadOnlySpan<byte> buffer)
+      {
+        this.writeEntered.Set();
+        this.release.Wait();
+        base.Write(buffer);
+      }
+
+      /// <inheritdoc/>
+      protected override void Dispose(bool disposing)
+      {
+        if (disposing)
+        {
+          this.writeEntered.Dispose();
+          this.release.Dispose();
+        }
+
+        base.Dispose(disposing);
+      }
     }
   }
 }
