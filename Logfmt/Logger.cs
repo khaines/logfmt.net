@@ -175,12 +175,21 @@ public sealed class Logger : IDisposable
             AppendValueField(buffer, pair.Key, pair.Value);
         }
 
-        if (_outputStream.CanWrite)
+        lock (_writeLock)
         {
-            lock (_writeLock)
+            if (_outputStream.CanWrite)
             {
-                _output.WriteLine(buffer.ToString());
-                _output.Flush();
+                try
+                {
+                    _output.WriteLine(buffer.ToString());
+                    _output.Flush();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // The stream or writer was disposed concurrently (e.g. Dispose called
+                    // on another thread); drop this entry rather than surface an exception
+                    // to the caller.
+                }
             }
         }
 
