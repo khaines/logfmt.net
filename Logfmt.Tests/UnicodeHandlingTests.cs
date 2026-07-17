@@ -114,9 +114,12 @@ namespace Logfmt.Tests
       outputStream.Seek(0, SeekOrigin.Begin);
       var output = new StreamReader(outputStream).ReadLine();
       var dict = ParseToDict(output);
+      var tokens = output.Split(' ');
 
-      // Exact key names pin the sanitization (and its consecutive-underscore collapse), so a
-      // double-underscore ("__key") or value-corruption mutation cannot survive a Contains substring.
+      // Exact RAW tokens pin the on-wire key form (defeating a symmetric key-encoding transform)
+      // including the consecutive-underscore collapse; the parsed checks add the round-trip.
+      Assert.Contains("user_=v1", tokens);
+      Assert.Contains("_key=v2", tokens);
       Assert.Equal("v1", dict["user_"]);
       Assert.Equal("v2", dict["_key"]);
       Assert.False(dict.ContainsKey("user\u00e9"));
@@ -139,6 +142,8 @@ namespace Logfmt.Tests
       var output = new StreamReader(outputStream).ReadLine();
       var dict = ParseToDict(output);
 
+      // Exact RAW token pins the on-wire single-underscore key (defeats a symmetric key transform).
+      Assert.Contains("_=v", output.Split(' '));
       Assert.Equal("v", dict["_"]);
       Assert.False(dict.ContainsKey("\u4e2d\u6587"));
       Assert.DoesNotContain("\u4e2d", output);
