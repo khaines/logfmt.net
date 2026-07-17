@@ -28,6 +28,9 @@ namespace Logfmt.Tests
       var output = new StreamReader(outputStream).ReadLine();
       var dict = ParseToDict(output);
 
+      // Raw wire form is verbatim, so a symmetric encode/decode bug cannot hide behind round-trip.
+      Assert.Contains("zh=\u4e2d\u6587", output);
+
       Assert.Equal("\u4e2d\u6587", dict["zh"]);
       Assert.Equal("\u3053\u3093\u306b\u3061\u306f", dict["ja"]);
       Assert.Equal("\uc548\ub155\ud558\uc138\uc694", dict["ko"]);
@@ -49,6 +52,7 @@ namespace Logfmt.Tests
       var output = new StreamReader(outputStream).ReadLine();
       var dict = ParseToDict(output);
 
+      Assert.Contains("emoji=" + emoji, output);
       Assert.Equal(emoji, dict["emoji"]);
     }
 
@@ -68,6 +72,7 @@ namespace Logfmt.Tests
       var output = new StreamReader(outputStream).ReadLine();
       var dict = ParseToDict(output);
 
+      Assert.Contains("text=" + combined, output);
       Assert.Equal(combined, dict["text"]);
     }
 
@@ -87,6 +92,7 @@ namespace Logfmt.Tests
       var output = new StreamReader(outputStream).ReadLine();
       var dict = ParseToDict(output);
 
+      Assert.Contains("chars=" + surrogate, output);
       Assert.Equal(surrogate, dict["chars"]);
     }
 
@@ -103,11 +109,35 @@ namespace Logfmt.Tests
 
       outputStream.Seek(0, SeekOrigin.Begin);
       var output = new StreamReader(outputStream).ReadLine();
+      var dict = ParseToDict(output);
 
-      Assert.Contains("user_=v1", output);
-      Assert.Contains("_key=v2", output);
+      // Exact key names pin the sanitization (and its consecutive-underscore collapse), so a
+      // double-underscore ("__key") or value-corruption mutation cannot survive a Contains substring.
+      Assert.Equal("v1", dict["user_"]);
+      Assert.Equal("v2", dict["_key"]);
+      Assert.False(dict.ContainsKey("user\u00e9"));
       Assert.DoesNotContain("\u00e9", output);
       Assert.DoesNotContain("\U0001F600", output);
+    }
+
+    /// <summary>
+    /// Tests that a key consisting entirely of unicode collapses to a single underscore.
+    /// </summary>
+    [Fact]
+    public void FullyUnicodeKeyIsConvertedToSingleUnderscore()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      logger.Info("m", "\u4e2d\u6587", "v");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+      var dict = ParseToDict(output);
+
+      Assert.Equal("v", dict["_"]);
+      Assert.False(dict.ContainsKey("\u4e2d\u6587"));
+      Assert.DoesNotContain("\u4e2d", output);
     }
 
     /// <summary>
@@ -156,7 +186,7 @@ namespace Logfmt.Tests
 
       for (int i = 0; i < 500; i++)
       {
-        logger.Info("\u4e2d\u6587", "emoji", "\U0001F600");
+        logger.Info("\u4e2d\u6587", "emoji", "\U0001F600", "seq", $"{i}");
       }
 
       outputStream.Seek(0, SeekOrigin.Begin);
@@ -166,11 +196,43 @@ namespace Logfmt.Tests
       while ((line = reader.ReadLine()) != null)
       {
         var dict = ParseToDict(line);
+        Assert.Equal("\u4e2d\u6587", dict["msg"]);
         Assert.Equal("\U0001F600", dict["emoji"]);
+        Assert.Equal($"{count}", dict["seq"]);
         count++;
       }
 
       Assert.Equal(500, count);
+    }
+
+    /// <summary>
+    /// Tests that unicode pseudo-separators in a value cannot break the record boundary or inject a
+    /// forged field, because the logfmt encoder and parser only treat ASCII whitespace as a delimiter.
+    /// </summary>
+    [Fact]
+    public void UnicodeSeparatorsInValueDoNotBreakRecordOrInjectField()
+    {
+      foreach (var separator in new[] { "\u2028", "\u2029", "\u0085", "\u00a0", "\u2003" })
+      {
+        var outputStream = new MemoryStream();
+        using var logger = new Logger(outputStream);
+
+        var value = "a" + separator + "injected=evil";
+        logger.Info("m", "k", value);
+
+        outputStream.Seek(0, SeekOrigin.Begin);
+        var reader = new StreamReader(outputStream);
+        var firstLine = reader.ReadLine();
+        var secondLine = reader.ReadLine();
+
+        // Exactly one record: the unicode separator did not start a new line.
+        Assert.Null(secondLine);
+
+        // The separator is not a delimiter: the value stays intact in one field, with no forged key.
+        var dict = ParseToDict(firstLine);
+        Assert.Equal(value, dict["k"]);
+        Assert.False(dict.ContainsKey("injected"));
+      }
     }
 
     private static Dictionary<string, string> ParseToDict(string line)
