@@ -215,6 +215,56 @@ namespace Logfmt.Tests
     }
 
     /// <summary>
+    /// Tests that Logger output round-trips exactly through the parser for values containing
+    /// parser-significant characters (control chars, whitespace, quote, backslash) and never
+    /// injects extra pairs. This pins the encoder-parser symmetry: reverting the Logger's
+    /// quote-on-any-char-&lt;=-space branch makes the control-char cases fail here.
+    /// </summary>
+    /// <param name="value">The value to round-trip through Logger then LogfmtParser.</param>
+    [Theory]
+    [InlineData("a\u000bb")]
+    [InlineData("a\u0000b")]
+    [InlineData("a\u000cb")]
+    [InlineData("a\u001bb")]
+    [InlineData("a\rb")]
+    [InlineData("a\nb")]
+    [InlineData("a\tb")]
+    [InlineData("a b")]
+    [InlineData("a\"b")]
+    [InlineData("a\\b")]
+    [InlineData("end\\")]
+    [InlineData("a\u000b\\b")]
+    [InlineData("a\u000bb=evil")]
+    [InlineData("x\"y=evil")]
+    public void LoggerOutputRoundTripsForParserSignificantValues(string value)
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      logger.Info("message", "k", value);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var logLine = new StreamReader(outputStream).ReadLine();
+
+      string parsedValue = null;
+      var pairCount = 0;
+      foreach (var kvp in LogfmtParser.Parse(logLine))
+      {
+        if (kvp.Key == "k")
+        {
+          parsedValue = kvp.Value;
+        }
+
+        pairCount++;
+      }
+
+      Assert.Equal(value, parsedValue);
+
+      // ts, level, msg, k — a spurious extra pair means the value broke out of its field (injection).
+      Assert.Equal(4, pairCount);
+    }
+
+    /// <summary>
     /// Tests parsing a line with only whitespace.
     /// </summary>
     [Fact]
