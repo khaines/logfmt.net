@@ -325,24 +325,19 @@ namespace Logfmt.Tests
         fields[kvp.Key] = kvp.Value;
       }
 
-      // Every one of the properties must be present with its exact value: no silent drops.
+      // Every one of the properties must be present with its exact value; remove each as verified.
       for (int i = 0; i < count; i++)
       {
         Assert.True(fields.TryGetValue($"key{i}", out var value), $"key{i} missing from output");
         Assert.Equal($"val{i}", value);
+        fields.Remove($"key{i}");
       }
 
-      // And exactly that many state properties were emitted (no drops, no extras).
-      var keyFieldCount = 0;
-      foreach (var key in fields.Keys)
-      {
-        if (key.StartsWith("key", StringComparison.Ordinal))
-        {
-          keyFieldCount++;
-        }
-      }
-
-      Assert.Equal(count, keyFieldCount);
+      // Only the framework-added fields may remain: no dropped, extra, or leaked state field of
+      // any name (not merely key-prefixed ones).
+      fields.Remove("ts");
+      fields.Remove("level");
+      Assert.Empty(fields);
     }
 
     /// <summary>
