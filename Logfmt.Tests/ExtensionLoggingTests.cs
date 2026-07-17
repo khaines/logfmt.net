@@ -302,7 +302,7 @@ namespace Logfmt.Tests
     /// Tests that a large state dictionary (over 1000 properties) is fully logged.
     /// </summary>
     [Fact]
-    public void LargeStateDictionaryIsFullyLogged()
+    public void TestLargeStateDictionaryIsFullyLogged()
     {
       var outputStream = new MemoryStream();
       ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
@@ -327,7 +327,7 @@ namespace Logfmt.Tests
     /// Tests that a complex nested object state value is rendered via ToString without crashing.
     /// </summary>
     [Fact]
-    public void ComplexNestedObjectStateUsesToString()
+    public void TestComplexNestedObjectStateUsesToString()
     {
       var outputStream = new MemoryStream();
       ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
@@ -353,7 +353,7 @@ namespace Logfmt.Tests
     /// Tests that a circular reference among state values is harmless because values are not traversed.
     /// </summary>
     [Fact]
-    public void CircularReferenceInStateValuesIsHandled()
+    public void TestCircularReferenceInStateValuesIsHandled()
     {
       var outputStream = new MemoryStream();
       ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
@@ -371,6 +371,10 @@ namespace Logfmt.Tests
       var ex = Record.Exception(() => logger.Log(LogLevel.Information, new EventId(0), state, null, null));
 
       Assert.Null(ex);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+      Assert.Contains("node=", output);
     }
 
     /// <summary>
@@ -378,7 +382,7 @@ namespace Logfmt.Tests
     /// </summary>
     /// <returns>A task representing the asynchronous test.</returns>
     [Fact]
-    public async System.Threading.Tasks.Task ConcurrentStateLoggingDoesNotThrow()
+    public async System.Threading.Tasks.Task TestConcurrentStateLoggingDoesNotThrow()
     {
       var outputStream = new MemoryStream();
       ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
@@ -429,7 +433,7 @@ namespace Logfmt.Tests
     /// Tests that multiple null values interleaved with valid values are skipped.
     /// </summary>
     [Fact]
-    public void StateWithMultipleNullAndValidValues()
+    public void TestStateWithMultipleNullAndValidValues()
     {
       var outputStream = new MemoryStream();
       ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
@@ -459,7 +463,7 @@ namespace Logfmt.Tests
     /// Tests that an ordered array state deduplicates keys with the last value winning.
     /// </summary>
     [Fact]
-    public void OrderedArrayStateDedupesLastValueWins()
+    public void TestOrderedArrayStateDedupesLastValueWins()
     {
       var outputStream = new MemoryStream();
       ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
@@ -482,10 +486,11 @@ namespace Logfmt.Tests
     }
 
     /// <summary>
-    /// Tests that a state value whose ToString throws does not crash the logging call.
+    /// Tests that a state value whose ToString throws does not crash the logging call, and that the
+    /// exception message is interpolated into the VALUE ERROR placeholder.
     /// </summary>
     [Fact]
-    public void StateValueWithThrowingToStringDoesNotCrash()
+    public void TestStateValueWithThrowingToStringDoesNotCrash()
     {
       var outputStream = new MemoryStream();
       ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
@@ -503,7 +508,71 @@ namespace Logfmt.Tests
       outputStream.Seek(0, SeekOrigin.Begin);
       var output = new StreamReader(outputStream).ReadLine();
       Assert.Contains("good=value", output);
+      Assert.Contains("[VALUE ERROR: boom]", output);
+    }
+
+    /// <summary>
+    /// Tests that a ToString exception whose message contains logfmt-significant characters is escaped
+    /// into a single record and cannot inject a forged field via the VALUE ERROR path.
+    /// </summary>
+    [Fact]
+    public void TestStateValueToStringExceptionMessageIsEscaped()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
+
+      var state = new Dictionary<string, object>
+      {
+        ["bad"] = new EvilToString(),
+        ["good"] = "value",
+      };
+
+      logger.Log(LogLevel.Information, new EventId(0), state, null, null);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var firstLine = reader.ReadLine();
+      var secondLine = reader.ReadLine();
+
+      // The exception message must be escaped into one record, not split into a forged entry.
+      Assert.Null(secondLine);
+
+      var fields = new Dictionary<string, string>();
+      foreach (var kvp in LogfmtParser.Parse(firstLine))
+      {
+        fields[kvp.Key] = kvp.Value;
+      }
+
+      Assert.False(fields.ContainsKey("owned"), "exception message forged a field");
+      Assert.Equal("value", fields["good"]);
+      Assert.Equal("[VALUE ERROR: forged\"\nlevel=fatal msg=owned]", fields["bad"]);
+    }
+
+    /// <summary>
+    /// Tests that a ToString exception whose Message getter itself throws still does not crash the log
+    /// call: the recovery path falls back to the exception type name (pins SafeExceptionMessage).
+    /// </summary>
+    [Fact]
+    public void TestStateValueToStringExceptionWithThrowingMessageDoesNotCrash()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
+
+      var state = new Dictionary<string, object>
+      {
+        ["bad"] = new ThrowingToStringWithThrowingMessage(),
+        ["good"] = "value",
+      };
+
+      var ex = Record.Exception(() => logger.Log(LogLevel.Information, new EventId(0), state, null, null));
+
+      Assert.Null(ex);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+      Assert.Contains("good=value", output);
       Assert.Contains("VALUE ERROR", output);
+      Assert.Contains(nameof(ThrowingMessageException), output);
     }
 
     /// <summary>
@@ -581,6 +650,21 @@ namespace Logfmt.Tests
     private sealed class ThrowingToString
     {
       public override string ToString() => throw new InvalidOperationException("boom");
+    }
+
+    private sealed class EvilToString
+    {
+      public override string ToString() => throw new InvalidOperationException("forged\"\nlevel=fatal msg=owned");
+    }
+
+    private sealed class ThrowingMessageException : Exception
+    {
+      public override string Message => throw new InvalidOperationException("message getter threw");
+    }
+
+    private sealed class ThrowingToStringWithThrowingMessage
+    {
+      public override string ToString() => throw new ThrowingMessageException();
     }
 
     private sealed class TestOptionsMonitor : Microsoft.Extensions.Options.IOptionsMonitor<ExtensionLoggerConfiguration>
