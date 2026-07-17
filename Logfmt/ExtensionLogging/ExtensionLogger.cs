@@ -78,7 +78,14 @@ public class ExtensionLogger : ILogger
             {
                 if (prop.Value != null)
                 {
-                    props[prop.Key] = prop.Value.ToString() ?? string.Empty;
+                    try
+                    {
+                        props[prop.Key] = prop.Value.ToString() ?? string.Empty;
+                    }
+                    catch (Exception ex)
+                    {
+                        props[prop.Key] = $"[VALUE ERROR: {ex.Message}]";
+                    }
                 }
             }
         }

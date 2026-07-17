@@ -299,6 +299,214 @@ namespace Logfmt.Tests
     }
 
     /// <summary>
+    /// Tests that a large state dictionary (over 1000 properties) is fully logged.
+    /// </summary>
+    [Fact]
+    public void LargeStateDictionaryIsFullyLogged()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
+
+      var state = new Dictionary<string, object>();
+      for (int i = 0; i < 1500; i++)
+      {
+        state[$"key{i}"] = $"val{i}";
+      }
+
+      logger.Log(LogLevel.Information, new EventId(0), state, null, null);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+
+      Assert.Contains("key0=val0", output);
+      Assert.Contains("key750=val750", output);
+      Assert.Contains("key1499=val1499", output);
+    }
+
+    /// <summary>
+    /// Tests that a complex nested object state value is rendered via ToString without crashing.
+    /// </summary>
+    [Fact]
+    public void ComplexNestedObjectStateUsesToString()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
+
+      var nested = new Dictionary<string, object>
+      {
+        ["inner"] = new List<int> { 1, 2, 3 },
+      };
+      var state = new Dictionary<string, object>
+      {
+        ["payload"] = nested,
+      };
+
+      var ex = Record.Exception(() => logger.Log(LogLevel.Information, new EventId(0), state, null, null));
+
+      Assert.Null(ex);
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+      Assert.Contains("payload=", output);
+    }
+
+    /// <summary>
+    /// Tests that a circular reference among state values is harmless because values are not traversed.
+    /// </summary>
+    [Fact]
+    public void CircularReferenceInStateValuesIsHandled()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
+
+      var a = new Node();
+      var b = new Node();
+      a.Other = b;
+      b.Other = a;
+
+      var state = new Dictionary<string, object>
+      {
+        ["node"] = a,
+      };
+
+      var ex = Record.Exception(() => logger.Log(LogLevel.Information, new EventId(0), state, null, null));
+
+      Assert.Null(ex);
+    }
+
+    /// <summary>
+    /// Tests that concurrent logging with per-call state dictionaries does not throw or drop entries.
+    /// </summary>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Fact]
+    public async System.Threading.Tasks.Task ConcurrentStateLoggingDoesNotThrow()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
+      var exceptions = new System.Collections.Concurrent.ConcurrentBag<Exception>();
+
+      var tasks = new System.Threading.Tasks.Task[8];
+      for (int t = 0; t < tasks.Length; t++)
+      {
+        var id = t;
+        tasks[t] = System.Threading.Tasks.Task.Run(() =>
+        {
+          try
+          {
+            for (int i = 0; i < 50; i++)
+            {
+              var state = new Dictionary<string, object>
+              {
+                ["thread"] = id,
+                ["iter"] = i,
+              };
+              logger.Log(LogLevel.Information, new EventId(0), state, null, null);
+            }
+          }
+          catch (Exception ex)
+          {
+            exceptions.Add(ex);
+          }
+        });
+      }
+
+      await System.Threading.Tasks.Task.WhenAll(tasks);
+
+      Assert.Empty(exceptions);
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var count = 0;
+      string line;
+      while ((line = reader.ReadLine()) != null)
+      {
+        Assert.StartsWith("ts=", line);
+        count++;
+      }
+
+      Assert.Equal(400, count);
+    }
+
+    /// <summary>
+    /// Tests that multiple null values interleaved with valid values are skipped.
+    /// </summary>
+    [Fact]
+    public void StateWithMultipleNullAndValidValues()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
+
+      var state = new Dictionary<string, object>
+      {
+        ["a"] = "1",
+        ["b"] = null,
+        ["c"] = "3",
+        ["d"] = null,
+        ["e"] = "5",
+      };
+
+      logger.Log(LogLevel.Information, new EventId(0), state, null, null);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+
+      Assert.Contains("a=1", output);
+      Assert.Contains("c=3", output);
+      Assert.Contains("e=5", output);
+      Assert.DoesNotContain("b=", output);
+      Assert.DoesNotContain("d=", output);
+    }
+
+    /// <summary>
+    /// Tests that an ordered array state deduplicates keys with the last value winning.
+    /// </summary>
+    [Fact]
+    public void OrderedArrayStateDedupesLastValueWins()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
+
+      var state = new[]
+      {
+        new KeyValuePair<string, object>("k", "first"),
+        new KeyValuePair<string, object>("k", "second"),
+        new KeyValuePair<string, object>("k", "third"),
+      };
+
+      logger.Log(LogLevel.Information, new EventId(0), state, null, null);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+
+      Assert.Contains("k=third", output);
+      Assert.DoesNotContain("k=first", output);
+      Assert.DoesNotContain("k=second", output);
+    }
+
+    /// <summary>
+    /// Tests that a state value whose ToString throws does not crash the logging call.
+    /// </summary>
+    [Fact]
+    public void StateValueWithThrowingToStringDoesNotCrash()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
+
+      var state = new Dictionary<string, object>
+      {
+        ["bad"] = new ThrowingToString(),
+        ["good"] = "value",
+      };
+
+      var ex = Record.Exception(() => logger.Log(LogLevel.Information, new EventId(0), state, null, null));
+
+      Assert.Null(ex);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+      Assert.Contains("good=value", output);
+      Assert.Contains("VALUE ERROR", output);
+    }
+
+    /// <summary>
     /// Tests that a formatter returning null does not crash.
     /// </summary>
     [Fact]
@@ -363,6 +571,16 @@ namespace Logfmt.Tests
       var config = new ExtensionLoggerConfiguration();
       config.LogLevel["test"] = LogLevel.Information;
       return config;
+    }
+
+    private sealed class Node
+    {
+      public Node Other { get; set; }
+    }
+
+    private sealed class ThrowingToString
+    {
+      public override string ToString() => throw new InvalidOperationException("boom");
     }
 
     private sealed class TestOptionsMonitor : Microsoft.Extensions.Options.IOptionsMonitor<ExtensionLoggerConfiguration>
