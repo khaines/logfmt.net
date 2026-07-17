@@ -249,5 +249,183 @@ namespace Logfmt.Tests
       Assert.Single(result);
       Assert.Equal(string.Empty, result[0].Value);
     }
+
+    /// <summary>
+    /// Tests that a key made up entirely of non-identifier characters is treated as a bare key.
+    /// </summary>
+    [Fact]
+    public void ParseKeyWithOnlyInvalidCharsIsBareKey()
+    {
+      var result = LogfmtParser.Parse("!!!invalid");
+
+      Assert.Single(result);
+      Assert.Equal("!!!invalid", result[0].Key);
+      Assert.Equal(string.Empty, result[0].Value);
+    }
+
+    /// <summary>
+    /// Tests parsing an unquoted value that ends at EOF without a trailing space.
+    /// </summary>
+    [Fact]
+    public void ParseValueEndingAtEofWithoutTrailingSpace()
+    {
+      var result = LogfmtParser.Parse("key=value");
+
+      Assert.Single(result);
+      Assert.Equal("key", result[0].Key);
+      Assert.Equal("value", result[0].Value);
+    }
+
+    /// <summary>
+    /// Tests that an unclosed quoted value is read gracefully to the end of the line.
+    /// </summary>
+    [Fact]
+    public void ParseUnclosedQuoteReadsToEndOfLine()
+    {
+      var result = LogfmtParser.Parse("key=\"unclosed");
+
+      Assert.Single(result);
+      Assert.Equal("key", result[0].Key);
+      Assert.Equal("unclosed", result[0].Value);
+    }
+
+    /// <summary>
+    /// Tests that a value beginning with a backslash-quote is treated as an unquoted literal.
+    /// </summary>
+    [Fact]
+    public void ParseValueStartingWithEscapedQuoteIsUnquoted()
+    {
+      var result = LogfmtParser.Parse("key=\\\"escaped");
+
+      Assert.Single(result);
+      Assert.Equal("key", result[0].Key);
+      Assert.Equal("\\\"escaped", result[0].Value);
+    }
+
+    /// <summary>
+    /// Tests that a backslash before a non-escape character inside a quoted value is preserved.
+    /// </summary>
+    [Fact]
+    public void ParseBackslashBeforeNonEscapeCharInQuotedValue()
+    {
+      var result = LogfmtParser.Parse("key=\"foo\\bar\"");
+
+      Assert.Single(result);
+      Assert.Equal("key", result[0].Key);
+      Assert.Equal("foo\\bar", result[0].Value);
+    }
+
+    /// <summary>
+    /// Tests that multiple consecutive spaces act as a single delimiter between pairs.
+    /// </summary>
+    [Fact]
+    public void ParseMultipleConsecutiveSpacesAsDelimiters()
+    {
+      var result = LogfmtParser.Parse("a=1   b=2");
+
+      Assert.Equal(2, result.Count);
+      Assert.Equal("a", result[0].Key);
+      Assert.Equal("1", result[0].Value);
+      Assert.Equal("b", result[1].Key);
+      Assert.Equal("2", result[1].Value);
+    }
+
+    /// <summary>
+    /// Tests that leading and trailing whitespace around the entire line is ignored.
+    /// </summary>
+    [Fact]
+    public void ParseLeadingAndTrailingWhitespaceIsIgnored()
+    {
+      var result = LogfmtParser.Parse("   key=value   ");
+
+      Assert.Single(result);
+      Assert.Equal("key", result[0].Key);
+      Assert.Equal("value", result[0].Value);
+    }
+
+    /// <summary>
+    /// Tests that a key composed entirely of underscores is parsed as a valid key.
+    /// </summary>
+    [Fact]
+    public void ParseAllUnderscoreKey()
+    {
+      var result = LogfmtParser.Parse("___=value");
+
+      Assert.Single(result);
+      Assert.Equal("___", result[0].Key);
+      Assert.Equal("value", result[0].Value);
+    }
+
+    /// <summary>
+    /// Tests that an unquoted value may contain multiple equals signs.
+    /// </summary>
+    [Fact]
+    public void ParseUnquotedValueWithMultipleEquals()
+    {
+      var result = LogfmtParser.Parse("k=a=b=c");
+
+      Assert.Single(result);
+      Assert.Equal("k", result[0].Key);
+      Assert.Equal("a=b=c", result[0].Value);
+    }
+
+    /// <summary>
+    /// Tests that a very long line (greater than 64KB) is parsed without crashing.
+    /// </summary>
+    [Fact]
+    public void ParseVeryLongLineDoesNotCrash()
+    {
+      var longValue = new string('a', 70000);
+      var result = LogfmtParser.Parse("key=" + longValue);
+
+      Assert.Single(result);
+      Assert.Equal("key", result[0].Key);
+      Assert.Equal(longValue, result[0].Value);
+    }
+
+    /// <summary>
+    /// Tests that unicode characters beyond ASCII are preserved in keys and values.
+    /// </summary>
+    [Fact]
+    public void ParseUnicodeInKeysAndValues()
+    {
+      var result = LogfmtParser.Parse("cl\u00e9=caf\u00e9 \u4e2d\u6587=data");
+
+      Assert.Equal(2, result.Count);
+      Assert.Equal("cl\u00e9", result[0].Key);
+      Assert.Equal("caf\u00e9", result[0].Value);
+      Assert.Equal("\u4e2d\u6587", result[1].Key);
+      Assert.Equal("data", result[1].Value);
+    }
+
+    /// <summary>
+    /// Tests that a tab character acts as a field delimiter per the kr/logfmt garbage rule.
+    /// </summary>
+    [Fact]
+    public void ParseTabCharacterActsAsDelimiter()
+    {
+      var result = LogfmtParser.Parse("a=1\tb=2");
+
+      Assert.Equal(2, result.Count);
+      Assert.Equal("a", result[0].Key);
+      Assert.Equal("1", result[0].Value);
+      Assert.Equal("b", result[1].Key);
+      Assert.Equal("2", result[1].Value);
+    }
+
+    /// <summary>
+    /// Tests that a mix of spaces and tabs between pairs is treated as a single delimiter.
+    /// </summary>
+    [Fact]
+    public void ParseMixedSpacesAndTabsAsDelimiter()
+    {
+      var result = LogfmtParser.Parse("a=1 \t b=2");
+
+      Assert.Equal(2, result.Count);
+      Assert.Equal("a", result[0].Key);
+      Assert.Equal("1", result[0].Value);
+      Assert.Equal("b", result[1].Key);
+      Assert.Equal("2", result[1].Value);
+    }
   }
 }
