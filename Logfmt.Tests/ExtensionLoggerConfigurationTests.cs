@@ -70,6 +70,30 @@ namespace Logfmt.Tests
     }
 
     /// <summary>
+    /// Tests that an exact category level takes precedence over a conflicting Default level.
+    /// </summary>
+    [Fact]
+    public void SpecificCategoryOverridesDefault()
+    {
+      var config = new ExtensionLoggerConfiguration();
+      config.LogLevel["Default"] = LogLevel.Error;
+      config.LogLevel["cat"] = LogLevel.Debug;
+      var monitor = new ChangeableOptionsMonitor(config);
+      using var provider = new ExtensionLoggerProvider(monitor);
+
+      // The exact "cat" level (Debug) wins over the more restrictive Default (Error).
+      var logger = provider.CreateLogger("cat");
+      Assert.True(logger.IsEnabled(LogLevel.Debug));
+      Assert.False(logger.IsEnabled(LogLevel.Trace));
+
+      // Control: an unconfigured category falls back to the restrictive Default (Error),
+      // so the assertions above reflect exact-over-Default precedence, not Default alone.
+      var other = provider.CreateLogger("other");
+      Assert.True(other.IsEnabled(LogLevel.Error));
+      Assert.False(other.IsEnabled(LogLevel.Debug));
+    }
+
+    /// <summary>
     /// Tests that an unknown category with no Default configured is disabled.
     /// </summary>
     [Fact]
