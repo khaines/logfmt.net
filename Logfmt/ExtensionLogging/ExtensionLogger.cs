@@ -78,7 +78,14 @@ public class ExtensionLogger : ILogger
             {
                 if (prop.Value != null)
                 {
-                    props[prop.Key] = prop.Value.ToString() ?? string.Empty;
+                    try
+                    {
+                        props[prop.Key] = prop.Value.ToString() ?? string.Empty;
+                    }
+                    catch (Exception ex)
+                    {
+                        props[prop.Key] = $"[VALUE ERROR: {SafeExceptionMessage(ex)}]";
+                    }
                 }
             }
         }
@@ -92,7 +99,7 @@ public class ExtensionLogger : ILogger
             }
             catch (Exception ex)
             {
-                props[Logger.MessageKey] = $"[FORMATTER ERROR: {ex.Message}]";
+                props[Logger.MessageKey] = $"[FORMATTER ERROR: {SafeExceptionMessage(ex)}]";
             }
         }
 
@@ -107,5 +114,19 @@ public class ExtensionLogger : ILogger
         }
 
         logger.Log(sevLevel, props.ToArray());
+    }
+
+    private static string SafeExceptionMessage(Exception ex)
+    {
+        try
+        {
+            return ex.Message;
+        }
+        catch (Exception)
+        {
+            // Exception.Message is overridable and can itself throw; fall back to the (non-virtual,
+            // safe) type name so the recovery path upholds the never-throw contract.
+            return ex.GetType().Name;
+        }
     }
 }

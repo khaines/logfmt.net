@@ -299,6 +299,438 @@ namespace Logfmt.Tests
     }
 
     /// <summary>
+    /// Tests that a large state dictionary (over 1000 properties) is fully logged.
+    /// </summary>
+    [Fact]
+    public void TestLargeStateDictionaryIsFullyLogged()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
+
+      const int count = 1500;
+      var state = new Dictionary<string, object>();
+      for (int i = 0; i < count; i++)
+      {
+        state[$"key{i}"] = $"val{i}";
+      }
+
+      logger.Log(LogLevel.Information, new EventId(0), state, null, null);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+
+      // Parse into the ordered list of pairs (not a dictionary) so duplicate keys and reserved-name
+      // (ts/level) leaks are visible rather than silently collapsed.
+      var pairs = LogfmtParser.Parse(output);
+
+      // Exactly the two framework fields (ts, level) plus the state properties -- nothing dropped,
+      // duplicated, or leaked under any name.
+      Assert.Equal(count + 2, pairs.Count);
+
+      var seen = new Dictionary<string, string>();
+      var tsCount = 0;
+      var levelCount = 0;
+      foreach (var kvp in pairs)
+      {
+        if (kvp.Key == "ts")
+        {
+          tsCount++;
+        }
+        else if (kvp.Key == "level")
+        {
+          levelCount++;
+          Assert.Equal("info", kvp.Value);
+        }
+        else
+        {
+          Assert.False(seen.ContainsKey(kvp.Key), $"duplicate field {kvp.Key}");
+          seen[kvp.Key] = kvp.Value;
+        }
+      }
+
+      Assert.Equal(1, tsCount);
+      Assert.Equal(1, levelCount);
+      Assert.Equal(count, seen.Count);
+
+      // Every one of the properties is present exactly once with its exact value.
+      for (int i = 0; i < count; i++)
+      {
+        Assert.True(seen.TryGetValue($"key{i}", out var value), $"key{i} missing from output");
+        Assert.Equal($"val{i}", value);
+      }
+    }
+
+    /// <summary>
+    /// Tests that a complex nested object state value is rendered via ToString without crashing.
+    /// </summary>
+    [Fact]
+    public void TestComplexNestedObjectStateUsesToString()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
+
+      var nested = new Dictionary<string, object>
+      {
+        ["inner"] = new List<int> { 1, 2, 3 },
+      };
+      var state = new Dictionary<string, object>
+      {
+        ["payload"] = nested,
+      };
+
+      var ex = Record.Exception(() => logger.Log(LogLevel.Information, new EventId(0), state, null, null));
+
+      Assert.Null(ex);
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+
+      var fields = new Dictionary<string, string>();
+      foreach (var kvp in LogfmtParser.Parse(output))
+      {
+        fields[kvp.Key] = kvp.Value;
+      }
+
+      // The nested object is rendered via its ToString() (the default type name here), not dropped/emptied.
+      Assert.Equal(nested.ToString(), fields["payload"]);
+    }
+
+    /// <summary>
+    /// Tests that a very deeply nested state value cannot cause recursion or a StackOverflow,
+    /// because the logger renders each value via ToString() exactly once and never traverses graphs.
+    /// </summary>
+    [Fact]
+    public void TestDeeplyNestedStateValueIsRenderedWithoutRecursion()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
+
+      object deep = "leaf";
+      for (int i = 0; i < 10000; i++)
+      {
+        deep = new List<object> { deep };
+      }
+
+      var state = new Dictionary<string, object>
+      {
+        ["deep"] = deep,
+      };
+
+      var ex = Record.Exception(() => logger.Log(LogLevel.Information, new EventId(0), state, null, null));
+
+      Assert.Null(ex);
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+
+      var fields = new Dictionary<string, string>();
+      foreach (var kvp in LogfmtParser.Parse(output))
+      {
+        fields[kvp.Key] = kvp.Value;
+      }
+
+      // Rendered via the top-level object's ToString() (its List type name), never traversed.
+      Assert.Equal(deep.ToString(), fields["deep"]);
+    }
+
+    /// <summary>
+    /// Tests that the logger invokes a state value's ToString() exactly once and never re-renders it,
+    /// which is what makes deep and circular state graphs harmless.
+    /// </summary>
+    [Fact]
+    public void TestStateValueToStringIsInvokedExactlyOnce()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
+
+      var counter = new CountingToString();
+      var state = new Dictionary<string, object>
+      {
+        ["value"] = counter,
+      };
+
+      logger.Log(LogLevel.Information, new EventId(0), state, null, null);
+
+      Assert.Equal(1, counter.Count);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+
+      var fields = new Dictionary<string, string>();
+      foreach (var kvp in LogfmtParser.Parse(output))
+      {
+        fields[kvp.Key] = kvp.Value;
+      }
+
+      Assert.Equal("counted", fields["value"]);
+    }
+
+    /// <summary>
+    /// Tests that a circular reference among state values is harmless because values are not traversed.
+    /// </summary>
+    [Fact]
+    public void TestCircularReferenceInStateValuesIsHandled()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
+
+      var a = new Node();
+      var b = new Node();
+      a.Other = b;
+      b.Other = a;
+
+      var state = new Dictionary<string, object>
+      {
+        ["node"] = a,
+      };
+
+      var ex = Record.Exception(() => logger.Log(LogLevel.Information, new EventId(0), state, null, null));
+
+      Assert.Null(ex);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+
+      var fields = new Dictionary<string, string>();
+      foreach (var kvp in LogfmtParser.Parse(output))
+      {
+        fields[kvp.Key] = kvp.Value;
+      }
+
+      // Rendered via the node's own ToString() exactly once (never traversed), so the cycle is harmless.
+      Assert.Equal(a.ToString(), fields["node"]);
+    }
+
+    /// <summary>
+    /// Tests that concurrent logging with per-call state dictionaries does not throw or drop entries.
+    /// </summary>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Fact]
+    public async System.Threading.Tasks.Task TestConcurrentStateLoggingDoesNotThrow()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
+      var exceptions = new System.Collections.Concurrent.ConcurrentBag<Exception>();
+
+      var tasks = new System.Threading.Tasks.Task[8];
+      for (int t = 0; t < tasks.Length; t++)
+      {
+        var id = t;
+        tasks[t] = System.Threading.Tasks.Task.Run(() =>
+        {
+          try
+          {
+            for (int i = 0; i < 50; i++)
+            {
+              var state = new Dictionary<string, object>
+              {
+                ["thread"] = id,
+                ["iter"] = i,
+              };
+              logger.Log(LogLevel.Information, new EventId(0), state, null, null);
+            }
+          }
+          catch (Exception ex)
+          {
+            exceptions.Add(ex);
+          }
+        });
+      }
+
+      await System.Threading.Tasks.Task.WhenAll(tasks);
+
+      Assert.Empty(exceptions);
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var seen = new HashSet<string>();
+      var count = 0;
+      string line;
+      while ((line = reader.ReadLine()) != null)
+      {
+        Assert.StartsWith("ts=", line);
+
+        var fields = new Dictionary<string, string>();
+        foreach (var kvp in LogfmtParser.Parse(line))
+        {
+          fields[kvp.Key] = kvp.Value;
+        }
+
+        Assert.True(fields.TryGetValue("thread", out var thread), "thread field missing from a log line");
+        Assert.True(fields.TryGetValue("iter", out var iter), "iter field missing from a log line");
+        var pair = thread + ":" + iter;
+        Assert.True(seen.Add(pair), $"duplicate entry {pair}");
+        count++;
+      }
+
+      // Every (thread, iter) pair was logged exactly once: no throw, no drop, no duplication.
+      Assert.Equal(400, count);
+      Assert.Equal(400, seen.Count);
+      for (int t = 0; t < 8; t++)
+      {
+        for (int i = 0; i < 50; i++)
+        {
+          Assert.Contains(t + ":" + i, seen);
+        }
+      }
+    }
+
+    /// <summary>
+    /// Tests that multiple null values interleaved with valid values are skipped.
+    /// </summary>
+    [Fact]
+    public void TestStateWithMultipleNullAndValidValues()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
+
+      var state = new Dictionary<string, object>
+      {
+        ["a"] = "1",
+        ["b"] = null,
+        ["c"] = "3",
+        ["d"] = null,
+        ["e"] = "5",
+      };
+
+      logger.Log(LogLevel.Information, new EventId(0), state, null, null);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+
+      Assert.Contains("a=1", output);
+      Assert.Contains("c=3", output);
+      Assert.Contains("e=5", output);
+      Assert.DoesNotContain("b=", output);
+      Assert.DoesNotContain("d=", output);
+    }
+
+    /// <summary>
+    /// Tests that an ordered array state deduplicates keys with the last value winning.
+    /// </summary>
+    [Fact]
+    public void TestOrderedArrayStateDedupesLastValueWins()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
+
+      var state = new[]
+      {
+        new KeyValuePair<string, object>("k", "first"),
+        new KeyValuePair<string, object>("k", "second"),
+        new KeyValuePair<string, object>("k", "third"),
+      };
+
+      logger.Log(LogLevel.Information, new EventId(0), state, null, null);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+
+      var fields = new Dictionary<string, string>();
+      var kCount = 0;
+      foreach (var kvp in LogfmtParser.Parse(output))
+      {
+        if (kvp.Key == "k")
+        {
+          kCount++;
+        }
+
+        fields[kvp.Key] = kvp.Value;
+      }
+
+      // Deduplicated to a single "k" field whose value is the last one written.
+      Assert.Equal(1, kCount);
+      Assert.Equal("third", fields["k"]);
+    }
+
+    /// <summary>
+    /// Tests that a state value whose ToString throws does not crash the logging call, and that the
+    /// exception message is interpolated into the VALUE ERROR placeholder.
+    /// </summary>
+    [Fact]
+    public void TestStateValueWithThrowingToStringDoesNotCrash()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
+
+      var state = new Dictionary<string, object>
+      {
+        ["bad"] = new ThrowingToString(),
+        ["good"] = "value",
+      };
+
+      var ex = Record.Exception(() => logger.Log(LogLevel.Information, new EventId(0), state, null, null));
+
+      Assert.Null(ex);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+      Assert.Contains("good=value", output);
+      Assert.Contains("[VALUE ERROR: boom]", output);
+    }
+
+    /// <summary>
+    /// Tests that a ToString exception whose message contains logfmt-significant characters is escaped
+    /// into a single record and cannot inject a forged field via the VALUE ERROR path.
+    /// </summary>
+    [Fact]
+    public void TestStateValueToStringExceptionMessageIsEscaped()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
+
+      var state = new Dictionary<string, object>
+      {
+        ["bad"] = new EvilToString(),
+        ["good"] = "value",
+      };
+
+      logger.Log(LogLevel.Information, new EventId(0), state, null, null);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var firstLine = reader.ReadLine();
+      var secondLine = reader.ReadLine();
+
+      // The exception message must be escaped into one record, not split into a forged entry.
+      Assert.Null(secondLine);
+
+      var fields = new Dictionary<string, string>();
+      foreach (var kvp in LogfmtParser.Parse(firstLine))
+      {
+        fields[kvp.Key] = kvp.Value;
+      }
+
+      Assert.False(fields.ContainsKey("owned"), "exception message forged a field");
+      Assert.Equal("value", fields["good"]);
+      Assert.Equal("[VALUE ERROR: forged\"\nlevel=fatal msg=owned]", fields["bad"]);
+    }
+
+    /// <summary>
+    /// Tests that a ToString exception whose Message getter itself throws still does not crash the log
+    /// call: the recovery path falls back to the exception type name (pins SafeExceptionMessage).
+    /// </summary>
+    [Fact]
+    public void TestStateValueToStringExceptionWithThrowingMessageDoesNotCrash()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
+
+      var state = new Dictionary<string, object>
+      {
+        ["bad"] = new ThrowingToStringWithThrowingMessage(),
+        ["good"] = "value",
+      };
+
+      var ex = Record.Exception(() => logger.Log(LogLevel.Information, new EventId(0), state, null, null));
+
+      Assert.Null(ex);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+      Assert.Contains("good=value", output);
+      Assert.Contains("VALUE ERROR", output);
+      Assert.Contains(nameof(ThrowingMessageException), output);
+    }
+
+    /// <summary>
     /// Tests that a formatter returning null does not crash.
     /// </summary>
     [Fact]
@@ -545,6 +977,42 @@ namespace Logfmt.Tests
       var config = new ExtensionLoggerConfiguration();
       config.LogLevel["test"] = LogLevel.Information;
       return config;
+    }
+
+    private sealed class Node
+    {
+      public Node Other { get; set; }
+    }
+
+    private sealed class CountingToString
+    {
+      public int Count { get; private set; }
+
+      public override string ToString()
+      {
+        this.Count++;
+        return "counted";
+      }
+    }
+
+    private sealed class ThrowingToString
+    {
+      public override string ToString() => throw new InvalidOperationException("boom");
+    }
+
+    private sealed class EvilToString
+    {
+      public override string ToString() => throw new InvalidOperationException("forged\"\nlevel=fatal msg=owned");
+    }
+
+    private sealed class ThrowingMessageException : Exception
+    {
+      public override string Message => throw new InvalidOperationException("message getter threw");
+    }
+
+    private sealed class ThrowingToStringWithThrowingMessage
+    {
+      public override string ToString() => throw new ThrowingMessageException();
     }
 
     private sealed class TestOptionsMonitor : Microsoft.Extensions.Options.IOptionsMonitor<ExtensionLoggerConfiguration>
