@@ -76,16 +76,21 @@ public class ExtensionLogger : ILogger
             // add properties from the state object if it was a collection of pairs
             foreach (var prop in stateProperties)
             {
-                if (prop.Value != null)
+                // Skip null keys (a Dictionary indexer would throw ArgumentNullException, breaking the
+                // never-throw contract) and null values. Reachable via a KeyValuePair[] state with a
+                // null key; MEL's own state types never admit one (#76).
+                if (prop.Key is null || prop.Value is null)
                 {
-                    try
-                    {
-                        props[prop.Key] = prop.Value.ToString() ?? string.Empty;
-                    }
-                    catch (Exception ex)
-                    {
-                        props[prop.Key] = $"[VALUE ERROR: {SafeExceptionMessage(ex)}]";
-                    }
+                    continue;
+                }
+
+                try
+                {
+                    props[prop.Key] = prop.Value.ToString() ?? string.Empty;
+                }
+                catch (Exception ex)
+                {
+                    props[prop.Key] = $"[VALUE ERROR: {SafeExceptionMessage(ex)}]";
                 }
             }
         }

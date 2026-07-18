@@ -972,6 +972,87 @@ namespace Logfmt.Tests
       Assert.NotNull(logger);
     }
 
+    /// <summary>
+    /// Tests that a state item with a null key does not throw (never-throw contract) and is skipped,
+    /// while sibling entries are still logged (#76).
+    /// </summary>
+    [Fact]
+    public void TestNullStateKeyIsSkippedWithoutThrowing()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
+
+      var state = new[]
+      {
+        new KeyValuePair<string, object>(null!, "orphan"),
+        new KeyValuePair<string, object>("good", "value"),
+      };
+
+      var ex = Record.Exception(() => logger.Log(LogLevel.Information, new EventId(0), state, null, (s, e) => "m"));
+
+      Assert.Null(ex);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+      var fields = new Dictionary<string, string>();
+      foreach (var kvp in LogfmtParser.Parse(output))
+      {
+        fields[kvp.Key] = kvp.Value;
+      }
+
+      // The null-keyed item is dropped; the valid sibling survives.
+      Assert.Equal("value", fields["good"]);
+      Assert.DoesNotContain("orphan", output);
+    }
+
+    /// <summary>
+    /// Tests that lowering a category's level at runtime takes effect when the core Logger is
+    /// unfiltered (Trace) -- the wiring the fixed provider uses so ExtensionLogger.IsEnabled (which
+    /// reads the live config) is the single severity gate (#70).
+    /// </summary>
+    [Fact]
+    public void TestRuntimeLevelLoweringEmitsWithUnfilteredCoreLogger()
+    {
+      var outputStream = new MemoryStream();
+      var config = new ExtensionLoggerConfiguration();
+      config.LogLevel["Default"] = LogLevel.Warning;
+
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Trace), () => config, "cat");
+
+      logger.LogInformation("before");
+
+      config.LogLevel["Default"] = LogLevel.Debug;
+      logger.LogInformation("after");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var content = new StreamReader(outputStream).ReadToEnd();
+
+      Assert.DoesNotContain("before", content);
+      Assert.Contains("after", content);
+    }
+
+    /// <summary>
+    /// Documents the #70 double-gate the fix removes: a core Logger baked with a restrictive filter
+    /// drops a runtime-lowered entry even though IsEnabled permits it -- which is why the provider now
+    /// constructs the core Logger unfiltered (Trace).
+    /// </summary>
+    [Fact]
+    public void TestBakedCoreFilterDropsRuntimeLoweredEntry()
+    {
+      var outputStream = new MemoryStream();
+      var config = new ExtensionLoggerConfiguration();
+      config.LogLevel["Default"] = LogLevel.Debug;
+
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Warn), () => config, "cat");
+
+      Assert.True(logger.IsEnabled(LogLevel.Information));
+      logger.LogInformation("dropped");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var content = new StreamReader(outputStream).ReadToEnd();
+      Assert.DoesNotContain("dropped", content);
+    }
+
     private ExtensionLoggerConfiguration GetConfiguration()
     {
       var config = new ExtensionLoggerConfiguration();
