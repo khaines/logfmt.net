@@ -263,9 +263,10 @@ namespace Logfmt.Tests
         // Exactly one record: the unicode separator did not start a new line.
         Assert.Null(secondLine);
 
-        // The value (with the separator) is emitted verbatim as a single unquoted token, so a
-        // symmetric wire transform of the separator cannot hide behind the parser round-trip.
-        Assert.Contains("k=" + value, firstLine.Split(' '));
+        // The value contains '=', so under strict kr/logfmt conformance it is emitted as a single
+        // QUOTED token -- the separator (and the '=') stay inside one field and cannot split the
+        // record or forge a key.
+        Assert.Contains("k=\"" + value + "\"", firstLine.Split(' '));
 
         // The separator is not a delimiter: the value stays intact in one field, with no forged key.
         var dict = ParseToDict(firstLine);

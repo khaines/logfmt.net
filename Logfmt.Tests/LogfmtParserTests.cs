@@ -381,16 +381,19 @@ namespace Logfmt.Tests
     }
 
     /// <summary>
-    /// Tests that a value beginning with a backslash-quote is treated as an unquoted literal.
+    /// Tests that an unquoted value terminates at a double-quote even when preceded by a backslash
+    /// -- escapes are only processed inside quoted values, per the kr/logfmt grammar (#75).
     /// </summary>
     [Fact]
-    public void ParseValueStartingWithEscapedQuoteIsUnquoted()
+    public void ParseUnquotedValueTerminatesAtQuoteAfterBackslash()
     {
       var result = LogfmtParser.Parse("key=\\\"escaped");
 
-      Assert.Single(result);
+      Assert.Equal(2, result.Count);
       Assert.Equal("key", result[0].Key);
-      Assert.Equal("\\\"escaped", result[0].Value);
+      Assert.Equal("\\", result[0].Value);
+      Assert.Equal("escaped", result[1].Key);
+      Assert.Equal(string.Empty, result[1].Value);
     }
 
     /// <summary>
@@ -448,16 +451,31 @@ namespace Logfmt.Tests
     }
 
     /// <summary>
-    /// Tests that an unquoted value may contain multiple equals signs.
+    /// Tests that an unquoted value terminates at '=' per the kr/logfmt grammar, so k=a=b=c parses
+    /// as k=a and b=c (#75).
     /// </summary>
     [Fact]
-    public void ParseUnquotedValueWithMultipleEquals()
+    public void ParseUnquotedValueStopsAtEquals()
     {
       var result = LogfmtParser.Parse("k=a=b=c");
 
-      Assert.Single(result);
+      Assert.Equal(2, result.Count);
       Assert.Equal("k", result[0].Key);
-      Assert.Equal("a=b=c", result[0].Value);
+      Assert.Equal("a", result[0].Value);
+      Assert.Equal("b", result[1].Key);
+      Assert.Equal("c", result[1].Value);
+    }
+
+    /// <summary>
+    /// Tests that an unquoted value terminates at a double-quote per the kr/logfmt grammar (#75).
+    /// </summary>
+    [Fact]
+    public void ParseUnquotedValueStopsAtQuote()
+    {
+      var result = LogfmtParser.Parse("k=a\"b");
+
+      Assert.Equal("k", result[0].Key);
+      Assert.Equal("a", result[0].Value);
     }
 
     /// <summary>

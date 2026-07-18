@@ -350,8 +350,10 @@ public sealed class Logger : IDisposable
                 needsQuotes = true;
                 hasSpecialChars = true;
             }
-            else if (c <= ' ')
+            else if (c <= ' ' || c == '=')
             {
+                // '=' (like whitespace and '"') terminates an unquoted value under the kr/logfmt
+                // grammar, so a value containing it must be quoted to round-trip (#75).
                 needsQuotes = true;
             }
         }
