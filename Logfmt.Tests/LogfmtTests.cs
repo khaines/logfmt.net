@@ -615,6 +615,308 @@ namespace Logfmt.Tests
     }
 
     /// <summary>
+    /// Tests that the severity filter can be raised and lowered between writes on the same instance.
+    /// </summary>
+    [Fact]
+    public void SetSeverityFilterCanRaiseAndLowerBetweenWrites()
+    {
+      var outputStream = new MemoryStream();
+      var logger = new Logger(outputStream, SeverityLevel.Info);
+
+      logger.Info("info one");
+
+      logger.SetSeverityFilter(SeverityLevel.Error);
+      logger.Info("dropped");
+      logger.Error("error one");
+
+      logger.SetSeverityFilter(SeverityLevel.Debug);
+      logger.Debug("debug one");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var lines = new List<string>();
+      string line;
+      while ((line = reader.ReadLine()) != null)
+      {
+        lines.Add(line);
+      }
+
+      Assert.Equal(3, lines.Count);
+      Assert.Contains("msg=\"info one\"", lines[0]);
+      Assert.Contains("msg=\"error one\"", lines[1]);
+      Assert.Contains("msg=\"debug one\"", lines[2]);
+    }
+
+    /// <summary>
+    /// Tests that changing the severity filter from multiple threads while logging does not throw or corrupt output.
+    /// </summary>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Fact]
+    public async System.Threading.Tasks.Task ConcurrentFilterChangesDoNotThrow()
+    {
+      var outputStream = new MemoryStream();
+      var logger = new Logger(outputStream, SeverityLevel.Info);
+      var exceptions = new System.Collections.Concurrent.ConcurrentBag<Exception>();
+      using var cts = new System.Threading.CancellationTokenSource();
+
+      var levels = new[] { SeverityLevel.Trace, SeverityLevel.Debug, SeverityLevel.Info, SeverityLevel.Warn, SeverityLevel.Error, SeverityLevel.Fatal };
+
+      var workers = new System.Threading.Tasks.Task[6];
+      for (int i = 0; i < workers.Length; i++)
+      {
+        var isChanger = i >= 4;
+        workers[i] = System.Threading.Tasks.Task.Run(() =>
+        {
+          try
+          {
+            var n = 0;
+            while (!cts.Token.IsCancellationRequested)
+            {
+              if (isChanger)
+              {
+                logger.SetSeverityFilter(levels[n % levels.Length]);
+              }
+              else
+              {
+                logger.Log(levels[n % levels.Length], "concurrent");
+              }
+
+              n++;
+            }
+          }
+          catch (Exception ex)
+          {
+            exceptions.Add(ex);
+          }
+        });
+      }
+
+      await System.Threading.Tasks.Task.Delay(100);
+      cts.Cancel();
+      await System.Threading.Tasks.Task.WhenAll(workers);
+
+      Assert.Empty(exceptions);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var validLevels = new HashSet<string> { "trace", "debug", "info", "warn", "error", "fatal" };
+      var lineCount = 0;
+      string outLine;
+      while ((outLine = reader.ReadLine()) != null)
+      {
+        var fields = new Dictionary<string, string>();
+        foreach (var kvp in LogfmtParser.Parse(outLine))
+        {
+          fields[kvp.Key] = kvp.Value;
+        }
+
+        Assert.True(fields.ContainsKey("ts"), $"missing ts in: {outLine}");
+        Assert.True(fields.TryGetValue("level", out var lvl) && validLevels.Contains(lvl), $"invalid level in: {outLine}");
+        Assert.Equal("concurrent", fields["msg"]);
+        lineCount++;
+      }
+
+      // The filter only ever cycles through non-Off levels, so some entries always pass; guard
+      // against a vacuous pass where the per-line assertions above never execute.
+      Assert.True(lineCount > 0, "expected some log lines to be emitted");
+    }
+
+    /// <summary>
+    /// Tests that setting the severity filter to Off mid-stream drops subsequent entries.
+    /// </summary>
+    [Fact]
+    public void SetSeverityFilterToOffMidStreamDropsSubsequent()
+    {
+      var outputStream = new MemoryStream();
+      var logger = new Logger(outputStream, SeverityLevel.Info);
+
+      logger.Error("before off");
+      logger.SetSeverityFilter(SeverityLevel.Off);
+      logger.Error("after off");
+      logger.Log(SeverityLevel.Fatal, "also after off");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var lines = new List<string>();
+      string line;
+      while ((line = reader.ReadLine()) != null)
+      {
+        lines.Add(line);
+      }
+
+      Assert.Single(lines);
+      Assert.Contains("msg=\"before off\"", lines[0]);
+    }
+
+    /// <summary>
+    /// Tests that a logger created (via WithData) after a filter change inherits the parent's
+    /// filter as of creation time — issue #56's "logger instance recreation after filter changes".
+    /// </summary>
+    [Fact]
+    public void LoggerCreatedAfterFilterChangeInheritsCurrentFilter()
+    {
+      var outputStream = new MemoryStream();
+      var baseLogger = new Logger(outputStream, SeverityLevel.Info);
+
+      baseLogger.SetSeverityFilter(SeverityLevel.Error);
+      var derived = baseLogger.WithData("scope", "derived");
+
+      derived.Info("dropped by inherited filter");
+      derived.Error("passes inherited filter");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var lines = new List<string>();
+      string line;
+      while ((line = reader.ReadLine()) != null)
+      {
+        lines.Add(line);
+      }
+
+      Assert.Single(lines);
+      Assert.Contains("msg=\"passes inherited filter\"", lines[0]);
+      Assert.DoesNotContain("dropped", lines[0]);
+    }
+
+    /// <summary>
+    /// Tests that a filter set above every written severity drops all lower-severity entries.
+    /// </summary>
+    [Fact]
+    public void FilterHigherThanAllWrittenSeveritiesDropsEverythingBelow()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream, SeverityLevel.Fatal);
+
+      logger.Log(SeverityLevel.Trace, "t");
+      logger.Log(SeverityLevel.Debug, "d");
+      logger.Log(SeverityLevel.Info, "i");
+      logger.Log(SeverityLevel.Warn, "w");
+      logger.Log(SeverityLevel.Error, "e");
+      logger.Log(SeverityLevel.Fatal, "f");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var lines = new List<string>();
+      string line;
+      while ((line = reader.ReadLine()) != null)
+      {
+        lines.Add(line);
+      }
+
+      Assert.Single(lines);
+      Assert.Contains("level=fatal", lines[0]);
+      Assert.Contains("msg=\"f\"", lines[0]);
+    }
+
+    /// <summary>
+    /// Tests that IsEnabled matches the exact cutoff for every combination of filter and message level.
+    /// </summary>
+    [Fact]
+    public void IsEnabledMatchesCutoffAcrossAllFilterLevels()
+    {
+      var levels = new[] { SeverityLevel.Trace, SeverityLevel.Debug, SeverityLevel.Info, SeverityLevel.Warn, SeverityLevel.Error, SeverityLevel.Fatal };
+
+      foreach (var filter in levels)
+      {
+        var logger = new Logger(Stream.Null, filter);
+        foreach (var level in levels)
+        {
+          Assert.Equal(level >= filter, logger.IsEnabled(level));
+        }
+      }
+
+      var offLogger = new Logger(Stream.Null, SeverityLevel.Off);
+      foreach (var level in levels)
+      {
+        Assert.False(offLogger.IsEnabled(level));
+      }
+    }
+
+    /// <summary>
+    /// Tests that rapid logging across many levels emits exactly the entries at or above the filter.
+    /// </summary>
+    [Fact]
+    public void RapidFireLoggingAtDifferentLevelsFiltersCorrectly()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream, SeverityLevel.Warn);
+
+      for (int i = 0; i < 500; i++)
+      {
+        logger.Info("below");
+        logger.Warn("at");
+        logger.Error("above");
+      }
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var count = 0;
+      string line;
+      while ((line = reader.ReadLine()) != null)
+      {
+        Assert.DoesNotContain("below", line);
+        count++;
+      }
+
+      Assert.Equal(1000, count);
+    }
+
+    /// <summary>
+    /// Tests that a logger created with SeverityLevel.Off can be re-enabled at runtime.
+    /// </summary>
+    [Fact]
+    public void OffFilterCanBeReEnabled()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream, SeverityLevel.Off);
+
+      logger.Info("while off");
+      logger.SetSeverityFilter(SeverityLevel.Info);
+      logger.Info("after re-enable");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var lines = new List<string>();
+      string line;
+      while ((line = reader.ReadLine()) != null)
+      {
+        lines.Add(line);
+      }
+
+      Assert.Single(lines);
+      Assert.Contains("msg=\"after re-enable\"", lines[0]);
+    }
+
+    /// <summary>
+    /// Tests that a WithData-derived logger carries an independent severity filter from its parent.
+    /// </summary>
+    [Fact]
+    public void WithDataDerivedLoggerHasIndependentFilter()
+    {
+      var outputStream = new MemoryStream();
+      var baseLogger = new Logger(outputStream, SeverityLevel.Info);
+      var childLogger = baseLogger.WithData("scope", "child");
+
+      childLogger.SetSeverityFilter(SeverityLevel.Error);
+
+      baseLogger.Info("from base");
+      childLogger.Info("from child");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var lines = new List<string>();
+      string line;
+      while ((line = reader.ReadLine()) != null)
+      {
+        lines.Add(line);
+      }
+
+      Assert.Single(lines);
+      Assert.Contains("msg=\"from base\"", lines[0]);
+      Assert.DoesNotContain("from child", lines[0]);
+    }
+
+    /// <summary>
     /// Tests that backslashes in values are escaped.
     /// </summary>
     [Fact]
