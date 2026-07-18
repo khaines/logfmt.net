@@ -99,10 +99,12 @@ public class StressBenchmarks
         {
             threads[t] = new System.Threading.Thread(() =>
             {
-                var chained = _logger.WithData("thread", "t").WithData("stage", "chain");
                 barrier.SignalAndWait();
                 for (int j = 0; j < 50; j++)
                 {
+                    // Build a fresh WithData chain inside the loop, after the barrier, so chain
+                    // construction overlaps other threads' active writes to the shared stream.
+                    var chained = _logger.WithData("thread", "t").WithData("stage", "chain");
                     chained.Info("chained message");
                 }
             });
