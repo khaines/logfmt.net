@@ -6,6 +6,7 @@ namespace Logfmt.Tests
   using System;
   using System.Collections.Generic;
   using System.IO;
+  using System.Reflection;
 
   using Logfmt.ExtensionLogging;
   using Microsoft.Extensions.Logging;
@@ -1075,11 +1076,103 @@ namespace Logfmt.Tests
       Assert.Empty(content);
     }
 
+    /// <summary>
+    /// Tests that <see cref="ExtensionLoggerProvider.CreateLogger"/> constructs each category's core
+    /// <see cref="Logger"/> unfiltered (<see cref="SeverityLevel.Trace"/>) regardless of the configured
+    /// level, so <see cref="ExtensionLogger.IsEnabled(LogLevel)"/> -- which reads the live config -- is
+    /// the single severity gate (#70). This guards the provider construction line directly: baking the
+    /// creation-time level into the core Logger (the pre-fix double-gate) would fail this test.
+    /// </summary>
+    [Fact]
+    public void TestProviderConstructsCoreLoggerUnfiltered()
+    {
+      var config = new ExtensionLoggerConfiguration();
+      config.LogLevel["provider-cat"] = LogLevel.Warning;
+      using var provider = new ExtensionLoggerProvider(new TestOptionsMonitor(config));
+
+      var extensionLogger = provider.CreateLogger("provider-cat");
+
+      // The private core Logger is the only seam; there is no public accessor by design.
+      var coreLoggerField = typeof(ExtensionLogger).GetField("logger", BindingFlags.Instance | BindingFlags.NonPublic);
+      Assert.NotNull(coreLoggerField);
+      var coreLogger = Assert.IsType<Logger>(coreLoggerField!.GetValue(extensionLogger));
+
+      // The core Logger must admit Trace (unfiltered). If the provider baked the configured Warning
+      // level into the core Logger (the #70 double-gate bug), IsEnabled(Trace) would be false.
+      Assert.True(coreLogger.IsEnabled(SeverityLevel.Trace));
+    }
+
+    /// <summary>
+    /// Tests that an undefined/out-of-range LogLevel (e.g. (LogLevel)7, above None) is never enabled or
+    /// emitted, even with a configured category and an unfiltered (Trace) core Logger. Without the range
+    /// guard, (LogLevel)7 would satisfy "configuredLevel &lt;= 7" and emit a spurious level=off entry --
+    /// the same class of regression the #70 unfilter exposes for None.
+    /// </summary>
+    [Fact]
+    public void TestUndefinedLogLevelIsNeverEnabledOrEmitted()
+    {
+      var outputStream = new MemoryStream();
+      var config = new ExtensionLoggerConfiguration();
+      config.LogLevel["cat"] = LogLevel.None;
+
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Trace), () => config, "cat");
+
+      Assert.False(logger.IsEnabled((LogLevel)7));
+
+      logger.Log((LogLevel)7, new EventId(0), "state", null, (s, e) => "should not emit");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var content = new StreamReader(outputStream).ReadToEnd();
+      Assert.Empty(content);
+    }
+
+    /// <summary>
+    /// Tests that a state whose enumerator throws mid-iteration does not escape Log (never-throw
+    /// contract): the exception is contained, properties collected before the fault survive, and a
+    /// [STATE ERROR] marker plus the formatted message are still emitted (#76).
+    /// </summary>
+    [Fact]
+    public void TestThrowingStateEnumeratorDoesNotEscape()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Info), this.GetConfiguration, "test");
+
+      var ex = Record.Exception(() =>
+        logger.Log(LogLevel.Information, new EventId(0), new ThrowingEnumerableState(), null, (s, e) => "survived"));
+
+      Assert.Null(ex);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+      var fields = new Dictionary<string, string>();
+      foreach (var kvp in LogfmtParser.Parse(output))
+      {
+        fields[kvp.Key] = kvp.Value;
+      }
+
+      // The good pair emitted before the enumerator threw survives; the fault is recorded; the message
+      // is still written -- all without throwing.
+      Assert.Equal("value", fields["good"]);
+      Assert.Contains("STATE ERROR", fields["state_error"]);
+      Assert.Equal("survived", fields[Logger.MessageKey]);
+    }
+
     private ExtensionLoggerConfiguration GetConfiguration()
     {
       var config = new ExtensionLoggerConfiguration();
       config.LogLevel["test"] = LogLevel.Information;
       return config;
+    }
+
+    private sealed class ThrowingEnumerableState : IEnumerable<KeyValuePair<string, object>>
+    {
+      public IEnumerator<KeyValuePair<string, object>> GetEnumerator()
+      {
+        yield return new KeyValuePair<string, object>("good", "value");
+        throw new InvalidOperationException("enumerator failed");
+      }
+
+      System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => this.GetEnumerator();
     }
 
     private sealed class Node
