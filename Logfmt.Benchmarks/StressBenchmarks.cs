@@ -56,13 +56,29 @@ public class StressBenchmarks
     [Benchmark]
     public void ConcurrentWriters()
     {
-        System.Threading.Tasks.Parallel.For(0, 32, i =>
+        using var barrier = new System.Threading.Barrier(32);
+        var threads = new System.Threading.Thread[32];
+        for (int t = 0; t < threads.Length; t++)
         {
-            for (int j = 0; j < 10; j++)
+            threads[t] = new System.Threading.Thread(() =>
             {
-                _logger.Info("concurrent message", "writer", "w");
-            }
-        });
+                barrier.SignalAndWait();
+                for (int j = 0; j < 50; j++)
+                {
+                    _logger.Info("concurrent message", "writer", "w");
+                }
+            });
+        }
+
+        foreach (var thread in threads)
+        {
+            thread.Start();
+        }
+
+        foreach (var thread in threads)
+        {
+            thread.Join();
+        }
     }
 
     [Benchmark]
@@ -77,22 +93,50 @@ public class StressBenchmarks
     [Benchmark]
     public void WithDataChainUnderConcurrency()
     {
-        System.Threading.Tasks.Parallel.For(0, 16, i =>
+        using var barrier = new System.Threading.Barrier(16);
+        var threads = new System.Threading.Thread[16];
+        for (int t = 0; t < threads.Length; t++)
         {
-            var chained = _logger.WithData("thread", "t").WithData("stage", "chain");
-            chained.Info("chained message");
-        });
+            threads[t] = new System.Threading.Thread(() =>
+            {
+                var chained = _logger.WithData("thread", "t").WithData("stage", "chain");
+                barrier.SignalAndWait();
+                for (int j = 0; j < 50; j++)
+                {
+                    chained.Info("chained message");
+                }
+            });
+        }
+
+        foreach (var thread in threads)
+        {
+            thread.Start();
+        }
+
+        foreach (var thread in threads)
+        {
+            thread.Join();
+        }
     }
 
     [Benchmark]
     public void LogEmitted()
     {
-        _logger.Info("emitted message");
+        for (int i = 0; i < 1000; i++)
+        {
+            _logger.Info("emitted message");
+        }
     }
 
     [Benchmark]
     public void LogFilteredOut()
     {
-        _filteredLogger.Info("filtered message");
+        // 1000 iterations so the filtered path measures real, non-elidable work: each Info is a
+        // cross-assembly call that hits the severity gate and returns. The A/B vs LogEmitted (same
+        // count) shows the filter's saved formatting cost and its zero allocation.
+        for (int i = 0; i < 1000; i++)
+        {
+            _filteredLogger.Info("filtered message");
+        }
     }
 }
