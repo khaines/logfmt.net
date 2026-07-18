@@ -12,8 +12,9 @@ using Microsoft.Extensions.Logging;
 public class ExtensionLoggerConfiguration
 {
     /// <summary>
-    /// Gets the dictionary of log levels keyed by category name.
+    /// Gets the dictionary of log levels keyed by category name. Category matching is case-insensitive,
+    /// consistent with the provider's case-insensitive logger cache.
     /// Use "Default" as the key to set the fallback log level.
     /// </summary>
-    public Dictionary<string, LogLevel> LogLevel { get; } = new Dictionary<string, LogLevel>();
+    public Dictionary<string, LogLevel> LogLevel { get; } = new Dictionary<string, LogLevel>(StringComparer.OrdinalIgnoreCase);
 }
