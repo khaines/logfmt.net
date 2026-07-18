@@ -1012,5 +1012,355 @@ namespace Logfmt.Tests
       Assert.Contains("count=42", stringOutput);
       Assert.Contains("count=42", typedOutput);
     }
+
+    /// <summary>
+    /// Tests that logging to a stream that becomes non-writable is silently skipped without throwing.
+    /// </summary>
+    [Fact]
+    public void WriteToNonWritableStreamIsSkipped()
+    {
+      var stream = new ToggleWritableStream { Writable = true };
+      using var logger = new Logger(stream);
+      stream.Writable = false;
+
+      var ex = Record.Exception(() => logger.Info("dropped"));
+
+      Assert.Null(ex);
+      Assert.Equal(0, stream.Length);
+    }
+
+    /// <summary>
+    /// Tests that constructing a logger with a stream that is not writable fails fast.
+    /// </summary>
+    [Fact]
+    public void NonWritableStreamAtConstructionThrows()
+    {
+      var stream = new ToggleWritableStream { Writable = false };
+
+      Assert.Throws<ArgumentException>(() => new Logger(stream));
+    }
+
+    /// <summary>
+    /// Tests that a stream becoming writable after an initial non-writable check is honored on the next log.
+    /// </summary>
+    [Fact]
+    public void StreamBecomingWritableIsHonored()
+    {
+      var stream = new ToggleWritableStream { Writable = true };
+      using var logger = new Logger(stream);
+      stream.Writable = false;
+
+      logger.Info("dropped");
+      Assert.Equal(0, stream.Length);
+
+      stream.Writable = true;
+      logger.Info("written");
+
+      stream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(stream).ReadLine();
+      Assert.Contains("msg=\"written\"", output);
+    }
+
+    /// <summary>
+    /// Tests that logging under extreme lock contention (over 100 threads) does not corrupt output.
+    /// </summary>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Fact]
+    public async System.Threading.Tasks.Task ExtremeLockContentionDoesNotCorruptOutput()
+    {
+      var outputStream = new MemoryStream();
+      var logger = new Logger(outputStream, SeverityLevel.Info);
+
+      const int threadCount = 128;
+      const int perThread = 20;
+      var tasks = new System.Threading.Tasks.Task[threadCount];
+      for (int i = 0; i < threadCount; i++)
+      {
+        var index = i;
+        tasks[i] = System.Threading.Tasks.Task.Run(() =>
+        {
+          for (int j = 0; j < perThread; j++)
+          {
+            logger.Info($"thread {index} message {j}");
+          }
+        });
+      }
+
+      await System.Threading.Tasks.Task.WhenAll(tasks);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var lines = new List<string>();
+      string line;
+      while ((line = reader.ReadLine()) != null)
+      {
+        lines.Add(line);
+      }
+
+      Assert.Equal(threadCount * perThread, lines.Count);
+      foreach (var l in lines)
+      {
+        Assert.StartsWith("ts=", l);
+        Assert.Contains("level=info", l);
+      }
+    }
+
+    /// <summary>
+    /// Tests that a very large single log entry (over 256KB) round-trips without truncation.
+    /// </summary>
+    [Fact]
+    public void VeryLargeLogEntryRoundTrips()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      var big = new string('a', 300000);
+      logger.Info(big);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+
+      Assert.Contains("msg=\"" + big + "\"", output);
+    }
+
+    /// <summary>
+    /// Tests that an empty log entry (no message, no pairs) still emits timestamp and level only.
+    /// </summary>
+    [Fact]
+    public void EmptyLogEntryEmitsTimestampAndLevelOnly()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      logger.Log(SeverityLevel.Info);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+
+      Assert.StartsWith("ts=", output);
+      Assert.EndsWith("level=info", output);
+      Assert.DoesNotContain("msg=", output);
+    }
+
+    /// <summary>
+    /// Tests that an entry large enough to overflow the cached StringBuilder is followed by a correct normal entry.
+    /// </summary>
+    [Fact]
+    public void StringBuilderCacheOverflowThenNormalLogWorks()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      logger.Info(new string('x', 5000));
+      logger.Info("small message");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var lines = new List<string>();
+      string line;
+      while ((line = reader.ReadLine()) != null)
+      {
+        lines.Add(line);
+      }
+
+      Assert.Equal(2, lines.Count);
+      Assert.Contains("msg=\"small message\"", lines[1]);
+    }
+
+    /// <summary>
+    /// Tests that a burst of many small entries followed by a few large entries stays well-formed.
+    /// </summary>
+    [Fact]
+    public void ManySmallThenFewLargeLogsRemainWellFormed()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      for (int i = 0; i < 1000; i++)
+      {
+        logger.Info($"small {i}");
+      }
+
+      for (int i = 0; i < 5; i++)
+      {
+        logger.Info(new string('y', 50000));
+      }
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var count = 0;
+      string line;
+      while ((line = reader.ReadLine()) != null)
+      {
+        Assert.StartsWith("ts=", line);
+        count++;
+      }
+
+      Assert.Equal(1005, count);
+    }
+
+    /// <summary>
+    /// Tests that logging through a logger after it has been disposed does not throw.
+    /// </summary>
+    [Fact]
+    public void DisposedLoggerReuseDoesNotThrow()
+    {
+      var stream = new MemoryStream();
+      var logger = new Logger(stream);
+      logger.Info("before");
+      logger.Dispose();
+
+      var ex = Record.Exception(() =>
+      {
+        logger.Info("after one");
+        logger.Info("after two");
+      });
+
+      Assert.Null(ex);
+    }
+
+    /// <summary>
+    /// Tests that disposing a logger while other threads are actively logging does not surface an exception.
+    /// </summary>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Fact]
+    public async System.Threading.Tasks.Task DisposeWhileOtherThreadsLoggingDoesNotThrow()
+    {
+      var stream = new MemoryStream();
+      var logger = new Logger(stream);
+      var exceptions = new System.Collections.Concurrent.ConcurrentBag<Exception>();
+      using var cts = new System.Threading.CancellationTokenSource();
+
+      var writers = new System.Threading.Tasks.Task[8];
+      for (int i = 0; i < writers.Length; i++)
+      {
+        writers[i] = System.Threading.Tasks.Task.Run(() =>
+        {
+          try
+          {
+            while (!cts.Token.IsCancellationRequested)
+            {
+              logger.Info("concurrent");
+            }
+          }
+          catch (Exception ex)
+          {
+            exceptions.Add(ex);
+          }
+        });
+      }
+
+      await System.Threading.Tasks.Task.Delay(50);
+      try
+      {
+        logger.Dispose();
+      }
+      catch (Exception ex)
+      {
+        exceptions.Add(ex);
+      }
+
+      cts.Cancel();
+      await System.Threading.Tasks.Task.WhenAll(writers);
+
+      Assert.Empty(exceptions);
+    }
+
+    /// <summary>
+    /// Deterministically tests that Dispose serializes against an in-flight write via the write lock:
+    /// while a Log is blocked mid-write (holding the lock), a concurrent Dispose must not proceed and
+    /// must not throw. This pins the fix — with Dispose unlocked it would dispose the stream while the
+    /// write is in flight, so <c>disposedWhileWriteInFlight</c> would be true and this test would fail.
+    /// </summary>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Fact]
+    public async System.Threading.Tasks.Task DisposeSerializesAgainstInFlightWrite()
+    {
+      using var stream = new BlockingStream();
+      var logger = new Logger(stream);
+
+      var writerTask = System.Threading.Tasks.Task.Run(() => logger.Info("blocking write"));
+      Assert.True(stream.WaitUntilWriteEntered(System.TimeSpan.FromSeconds(5)), "writer did not enter Write");
+
+      using var disposeReturned = new System.Threading.ManualResetEventSlim(false);
+      var disposeTask = System.Threading.Tasks.Task.Run(() =>
+      {
+        logger.Dispose();
+        disposeReturned.Set();
+      });
+
+      var disposedWhileWriteInFlight = disposeReturned.Wait(System.TimeSpan.FromMilliseconds(300));
+
+      stream.ReleaseWrite();
+
+      var ex = await Record.ExceptionAsync(() => System.Threading.Tasks.Task.WhenAll(writerTask, disposeTask));
+
+      Assert.Null(ex);
+      Assert.False(disposedWhileWriteInFlight, "Dispose must wait for the in-flight write (serialized via the write lock)");
+    }
+
+    /// <summary>
+    /// A <see cref="MemoryStream"/> whose writability can be toggled at runtime for testing.
+    /// </summary>
+    private sealed class ToggleWritableStream : MemoryStream
+    {
+      /// <summary>
+      /// Gets or sets a value indicating whether the stream reports itself as writable.
+      /// </summary>
+      public bool Writable { get; set; } = true;
+
+      /// <inheritdoc/>
+      public override bool CanWrite => this.Writable;
+    }
+
+    /// <summary>
+    /// A <see cref="MemoryStream"/> whose write blocks until released, to deterministically hold a
+    /// write in flight (inside the logger's write lock) while another thread disposes the logger.
+    /// </summary>
+    private sealed class BlockingStream : MemoryStream
+    {
+      private readonly System.Threading.ManualResetEventSlim writeEntered = new System.Threading.ManualResetEventSlim(false);
+      private readonly System.Threading.ManualResetEventSlim release = new System.Threading.ManualResetEventSlim(false);
+
+      /// <summary>
+      /// Blocks until the stream's Write has been entered, or the timeout elapses.
+      /// </summary>
+      /// <param name="timeout">The maximum time to wait.</param>
+      /// <returns>true if Write was entered before the timeout.</returns>
+      public bool WaitUntilWriteEntered(System.TimeSpan timeout) => this.writeEntered.Wait(timeout);
+
+      /// <summary>
+      /// Releases the blocked Write so it can complete.
+      /// </summary>
+      public void ReleaseWrite() => this.release.Set();
+
+      /// <inheritdoc/>
+      public override void Write(byte[] buffer, int offset, int count)
+      {
+        this.writeEntered.Set();
+        this.release.Wait();
+        base.Write(buffer, offset, count);
+      }
+
+      /// <inheritdoc/>
+      public override void Write(ReadOnlySpan<byte> buffer)
+      {
+        this.writeEntered.Set();
+        this.release.Wait();
+        base.Write(buffer);
+      }
+
+      /// <inheritdoc/>
+      protected override void Dispose(bool disposing)
+      {
+        if (disposing)
+        {
+          this.writeEntered.Dispose();
+          this.release.Dispose();
+        }
+
+        base.Dispose(disposing);
+      }
+    }
   }
 }
