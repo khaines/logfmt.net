@@ -30,6 +30,14 @@ public class ExtensionLogger : ILogger
     /// <inheritdoc/>
     public bool IsEnabled(LogLevel logLevel)
     {
+        // LogLevel.None means "no logging"; it must never be enabled or emitted. Guard it explicitly:
+        // the numeric comparison below would otherwise treat None (the max value) as enabled, and with
+        // the core Logger now unfiltered (#70) that would emit a spurious level=off entry.
+        if (logLevel == LogLevel.None)
+        {
+            return false;
+        }
+
         var config = getCurrentConfig();
         if (config.LogLevel.TryGetValue(this.categoryName, out var categoryLevel))
         {

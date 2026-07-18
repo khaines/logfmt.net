@@ -1053,6 +1053,28 @@ namespace Logfmt.Tests
       Assert.DoesNotContain("dropped", content);
     }
 
+    /// <summary>
+    /// Tests that LogLevel.None is never enabled and never emitted, even with an unfiltered (Trace)
+    /// core Logger and a permissive config -- the regression the #70 fix could otherwise expose.
+    /// </summary>
+    [Fact]
+    public void TestLogLevelNoneIsNeverEnabledOrEmitted()
+    {
+      var outputStream = new MemoryStream();
+      var config = new ExtensionLoggerConfiguration();
+      config.LogLevel["Default"] = LogLevel.Trace;
+
+      ILogger logger = new ExtensionLogger(new Logger(outputStream, SeverityLevel.Trace), () => config, "cat");
+
+      Assert.False(logger.IsEnabled(LogLevel.None));
+
+      logger.Log(LogLevel.None, new EventId(0), "state", null, (s, e) => "should not emit");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var content = new StreamReader(outputStream).ReadToEnd();
+      Assert.Empty(content);
+    }
+
     private ExtensionLoggerConfiguration GetConfiguration()
     {
       var config = new ExtensionLoggerConfiguration();
