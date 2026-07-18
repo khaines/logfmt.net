@@ -8,6 +8,14 @@ namespace Logfmt.Benchmarks;
 /// allocations through the core Logger. Each value is the same UTF-16 length (128 code units) so the
 /// Ratio/Allocated columns reflect encoding cost, not payload length. ASCII is the baseline (#78).
 /// </summary>
+/// <remarks>
+/// Representative measured degradation (ShortRun, .NET 8, Apple M-series dev machine; absolute numbers
+/// are machine-dependent but the pattern is stable): allocations are identical across every input
+/// (570.31 KB/op, Alloc Ratio 1.00), so the difference is purely UTF-8 encoding CPU cost. Relative to
+/// the ASCII baseline, throughput degrades to roughly CombiningMarks 1.28x, CJK 1.33x, SurrogatePairs
+/// 1.39x and Emoji 1.42x -- supplementary-plane code points (emoji / surrogate pairs) are the most
+/// expensive. Re-measure with `dotnet run -c Release -- --filter '*UnicodeThroughputBenchmarks*'`.
+/// </remarks>
 [MemoryDiagnoser]
 public class UnicodeThroughputBenchmarks
 {
