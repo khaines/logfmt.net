@@ -989,10 +989,10 @@ namespace Logfmt.Tests
     }
 
     /// <summary>
-    /// Tests that values containing equals signs are output correctly.
+    /// Tests that a value containing '=' is quoted so it round-trips under the kr/logfmt grammar (#75).
     /// </summary>
     [Fact]
-    public void ValueContainingEqualsSign()
+    public void ValueContainingEqualsSignIsQuoted()
     {
       var outputStream = new MemoryStream();
       using var logger = new Logger(outputStream);
@@ -1003,7 +1003,17 @@ namespace Logfmt.Tests
       var reader = new StreamReader(outputStream);
       var output = reader.ReadLine();
 
-      Assert.Contains("query=key1=value1", output);
+      // The '=' forces quoting, so a kr/logfmt parser reads the whole value as one field.
+      Assert.Contains("query=\"key1=value1\"", output);
+
+      // Round-trip: the parser recovers the original value.
+      var fields = new Dictionary<string, string>();
+      foreach (var kvp in LogfmtParser.Parse(output))
+      {
+        fields[kvp.Key] = kvp.Value;
+      }
+
+      Assert.Equal("key1=value1", fields["query"]);
     }
 
     /// <summary>

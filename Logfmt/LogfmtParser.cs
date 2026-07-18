@@ -36,9 +36,9 @@ public static class LogfmtParser
                 break;
             }
 
-            // Parse key (ident bytes are any char (UTF-16 code unit) > ' ', excluding '=')
+            // Parse key (ident bytes are any char (UTF-16 code unit) > ' ', excluding '=' and '"')
             int keyStart = pos;
-            while (pos < len && line[pos] != '=' && line[pos] > ' ')
+            while (pos < len && line[pos] != '=' && line[pos] != '"' && line[pos] > ' ')
             {
                 pos++;
             }
@@ -72,9 +72,10 @@ public static class LogfmtParser
             }
             else
             {
-                // Unquoted value (ident bytes are any char (UTF-16 code unit) > ' ')
+                // Unquoted value: ident bytes are any char (UTF-16 code unit) > ' ', excluding '='
+                // and '"', which terminate the value under the kr/logfmt grammar (#75).
                 int valueStart = pos;
-                while (pos < len && line[pos] > ' ')
+                while (pos < len && line[pos] > ' ' && line[pos] != '=' && line[pos] != '"')
                 {
                     pos++;
                 }
