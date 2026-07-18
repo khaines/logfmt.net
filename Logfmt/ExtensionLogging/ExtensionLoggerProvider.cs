@@ -41,15 +41,12 @@ public sealed class ExtensionLoggerProvider : ILoggerProvider
       Justification = "The created logger instance has a longer lifetime than the method it is created in.")]
     public ILogger CreateLogger(string categoryName)
     {
-        return _loggers.GetOrAdd(categoryName, name =>
-        {
-            if (!_currentConfig.LogLevel.TryGetValue(name, out LogLevel logLevel) && !_currentConfig.LogLevel.TryGetValue("Default", out logLevel))
-            {
-                logLevel = LogLevel.None;
-            }
-
-            return new ExtensionLogger(new Logger(logLevel.ToSeverityLevel()).WithData(Category, name), GetCurrentConfig, name);
-        });
+        // The core Logger is intentionally unfiltered (Trace): ExtensionLogger.IsEnabled reads the
+        // live configuration on every call and is the single severity gate. Baking the creation-time
+        // level into the core Logger would double-gate and defeat runtime level-lowering (#70).
+        return _loggers.GetOrAdd(
+            categoryName,
+            name => new ExtensionLogger(new Logger(SeverityLevel.Trace).WithData(Category, name), GetCurrentConfig, name));
     }
 
     /// <inheritdoc/>

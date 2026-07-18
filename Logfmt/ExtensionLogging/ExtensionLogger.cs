@@ -30,6 +30,15 @@ public class ExtensionLogger : ILogger
     /// <inheritdoc/>
     public bool IsEnabled(LogLevel logLevel)
     {
+        // Only the defined logging levels (Trace..Critical) may ever be enabled. LogLevel.None and any
+        // undefined/out-of-range value (e.g. (LogLevel)7) map to SeverityLevel.Off and must never emit:
+        // the numeric comparison below would otherwise treat a value above a configured level as enabled,
+        // and with the core Logger now unfiltered (#70) that would emit a spurious level=off entry.
+        if (logLevel < LogLevel.Trace || logLevel > LogLevel.Critical)
+        {
+            return false;
+        }
+
         var config = getCurrentConfig();
         if (config.LogLevel.TryGetValue(this.categoryName, out var categoryLevel))
         {
@@ -73,11 +82,22 @@ public class ExtensionLogger : ILogger
         var props = new Dictionary<string, string>(8);
         if (state is IEnumerable<KeyValuePair<string, object>> stateProperties)
         {
-            // add properties from the state object if it was a collection of pairs
-            foreach (var prop in stateProperties)
+            // A state enumerator (MoveNext/Current) can itself throw; enumerating must never let that
+            // escape the logging call (never-throw contract). Preserve whatever was collected before the
+            // fault and record a marker so the failure is visible rather than silent (#76).
+            try
             {
-                if (prop.Value != null)
+                // add properties from the state object if it was a collection of pairs
+                foreach (var prop in stateProperties)
                 {
+                    // Skip null keys (a Dictionary indexer would throw ArgumentNullException, breaking the
+                    // never-throw contract) and null values. Reachable via a KeyValuePair[] state with a
+                    // null key; MEL's own state types never admit one (#76).
+                    if (prop.Key is null || prop.Value is null)
+                    {
+                        continue;
+                    }
+
                     try
                     {
                         props[prop.Key] = prop.Value.ToString() ?? string.Empty;
@@ -87,6 +107,10 @@ public class ExtensionLogger : ILogger
                         props[prop.Key] = $"[VALUE ERROR: {SafeExceptionMessage(ex)}]";
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                props["state_error"] = $"[STATE ERROR: {SafeExceptionMessage(ex)}]";
             }
         }
 
