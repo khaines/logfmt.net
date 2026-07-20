@@ -1196,6 +1196,36 @@ namespace Logfmt.Tests
     }
 
     /// <summary>
+    /// Tests the documented reserved-field behavior: a user key colliding with a reserved field (msg)
+    /// produces a duplicate field. logfmt permits duplicate keys and typical consumers take the last.
+    /// </summary>
+    [Fact]
+    public void UserKeyCollidingWithReservedFieldProducesDuplicate()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      logger.Log(SeverityLevel.Info, "primary", "msg", "shadow");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+
+      var msgCount = 0;
+      foreach (var field in output.Split(' '))
+      {
+        if (field.StartsWith("msg=", StringComparison.Ordinal))
+        {
+          msgCount++;
+        }
+      }
+
+      // Two msg fields: the reserved one from the message parameter, then the colliding user pair.
+      Assert.Equal(2, msgCount);
+      Assert.Contains("msg=\"primary\"", output);
+      Assert.Contains("msg=\"shadow\"", output);
+    }
+
+    /// <summary>
     /// Tests that typed values are filtered with zero cost when level is disabled.
     /// </summary>
     [Fact]

@@ -40,10 +40,12 @@ namespace Logfmt.Tests
     {
       var exporter = new ConsoleLogExporter();
 
-      Assert.NotNull(exporter);
+      // An active exporter reports Success; a disposed one reports Failure without throwing.
+      Assert.Equal(ExportResult.Success, exporter.Export(default));
 
-      // Should not throw when disposing
       exporter.Dispose();
+
+      Assert.Equal(ExportResult.Failure, exporter.Export(default));
     }
 
     /// <summary>
@@ -56,7 +58,8 @@ namespace Logfmt.Tests
       var logger = new Logger(outputStream);
       var exporter = new ConsoleLogExporter(logger);
 
-      Assert.NotNull(exporter);
+      // The custom-logger exporter is functional: Export returns Success on an empty batch.
+      Assert.Equal(ExportResult.Success, exporter.Export(default));
 
       exporter.Dispose();
     }
@@ -109,10 +112,11 @@ namespace Logfmt.Tests
       var reader = new StreamReader(outputStream);
       var output = reader.ReadLine();
 
-      // Should contain basic log structure with timestamp
-      Assert.Contains("level=info", output, StringComparison.InvariantCultureIgnoreCase);
-      Assert.Contains("msg=\"Test message from OpenTelemetry\"", output, StringComparison.InvariantCultureIgnoreCase);
-      Assert.Contains("ts=", output, StringComparison.InvariantCultureIgnoreCase);
+      // Structural: parse the record and assert exact field values.
+      var fields = ParseFields(output);
+      Assert.Equal("info", fields["level"]);
+      Assert.Equal("Test message from OpenTelemetry", fields["msg"]);
+      Assert.True(fields.ContainsKey("ts"));
     }
 
     /// <summary>
@@ -150,10 +154,12 @@ namespace Logfmt.Tests
       var warningLine = reader.ReadLine();
       var errorLine = reader.ReadLine();
 
-      Assert.Contains("level=debug", debugLine, StringComparison.InvariantCultureIgnoreCase);
-      Assert.Contains("level=info", infoLine, StringComparison.InvariantCultureIgnoreCase);
-      Assert.Contains("level=warn", warningLine, StringComparison.InvariantCultureIgnoreCase);
-      Assert.Contains("level=error", errorLine, StringComparison.InvariantCultureIgnoreCase);
+      Assert.Equal("debug", ParseFields(debugLine)["level"]);
+      Assert.Equal("info", ParseFields(infoLine)["level"]);
+      Assert.Equal("warn", ParseFields(warningLine)["level"]);
+      Assert.Equal("error", ParseFields(errorLine)["level"]);
+      Assert.Equal("Debug message", ParseFields(debugLine)["msg"]);
+      Assert.Equal("Error message", ParseFields(errorLine)["msg"]);
     }
 
     /// <summary>
@@ -336,6 +342,55 @@ namespace Logfmt.Tests
       outputStream.Seek(0, SeekOrigin.Begin);
       var output = new StreamReader(outputStream).ReadLine();
       Assert.Contains("exception_msg=ThrowingMessageException", output);
+    }
+
+    /// <summary>
+    /// Tests that a hostile record (whose exception StackTrace getter throws inside ExtractAttributes)
+    /// is contained per-record with an [EXPORT ERROR] marker and does not abort export of the other
+    /// records in the same run.
+    /// </summary>
+    [Fact]
+    public void TestOpenTelemetryHostileRecordDoesNotAbortBatch()
+    {
+      var outputStream = new MemoryStream();
+      var customLogger = new Logger(outputStream);
+
+      using var loggerFactory = LoggerFactory.Create(builder =>
+      {
+        builder.AddOpenTelemetry(options =>
+        {
+          options.AddProcessor(new SimpleLogRecordExportProcessor(new ConsoleLogExporter(customLogger)));
+        });
+      });
+
+      var logger = loggerFactory.CreateLogger("cat");
+      logger.LogInformation("first");
+      logger.LogError(new ThrowingStackTraceException(), "hostile");
+      logger.LogInformation("third");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var lines = new StreamReader(outputStream).ReadToEnd().Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+      Assert.Equal(3, lines.Length);
+      Assert.Equal("first", ParseFields(lines[0])["msg"]);
+      Assert.Contains("[EXPORT ERROR:", ParseFields(lines[1])["msg"]);
+      Assert.Equal("third", ParseFields(lines[2])["msg"]);
+    }
+
+    private static Dictionary<string, string> ParseFields(string line)
+    {
+      var fields = new Dictionary<string, string>();
+      foreach (var kvp in LogfmtParser.Parse(line))
+      {
+        fields[kvp.Key] = kvp.Value;
+      }
+
+      return fields;
+    }
+
+    private sealed class ThrowingStackTraceException : Exception
+    {
+      public override string StackTrace => throw new InvalidOperationException("stack getter threw");
     }
 
     private sealed class ThrowingMessageException : Exception

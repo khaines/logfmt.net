@@ -39,7 +39,8 @@ public class ConsoleLogExporter : BaseExporter<LogRecord>
     {
         if (_isDisposed)
         {
-            Console.Error.WriteLine("Warning: Attempted to export logs using a disposed ConsoleLogExporter.");
+            // A disposed exporter reports Failure rather than writing a diagnostic to a possibly
+            // hostile or redirected stderr (which could throw and break the never-throw contract).
             return ExportResult.Failure;
         }
 
