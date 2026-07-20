@@ -347,7 +347,7 @@ namespace Logfmt.Tests
     /// <summary>
     /// Tests that a hostile record (whose exception StackTrace getter throws inside ExtractAttributes)
     /// is contained per-record with an [EXPORT ERROR] marker and does not abort export of the other
-    /// records in the same run.
+    /// records in the SAME batch (a batching processor delivers all three to one Export call).
     /// </summary>
     [Fact]
     public void TestOpenTelemetryHostileRecordDoesNotAbortBatch()
@@ -355,11 +355,13 @@ namespace Logfmt.Tests
       var outputStream = new MemoryStream();
       var customLogger = new Logger(outputStream);
 
-      using var loggerFactory = LoggerFactory.Create(builder =>
+      // A batching processor so all three records reach the exporter in a SINGLE Export call; this
+      // proves the per-record try/catch lets the loop CONTINUE past the hostile middle record.
+      var loggerFactory = LoggerFactory.Create(builder =>
       {
         builder.AddOpenTelemetry(options =>
         {
-          options.AddProcessor(new SimpleLogRecordExportProcessor(new ConsoleLogExporter(customLogger)));
+          options.AddProcessor(new BatchLogRecordExportProcessor(new ConsoleLogExporter(customLogger)));
         });
       });
 
@@ -368,8 +370,12 @@ namespace Logfmt.Tests
       logger.LogError(new ThrowingStackTraceException(), "hostile");
       logger.LogInformation("third");
 
-      outputStream.Seek(0, SeekOrigin.Begin);
-      var lines = new StreamReader(outputStream).ReadToEnd().Split('\n', StringSplitOptions.RemoveEmptyEntries);
+      // Dispose flushes the queued batch through one Export call before we read. It also disposes the
+      // underlying stream, so read the captured bytes via ToArray() (valid after a MemoryStream close).
+      loggerFactory.Dispose();
+
+      var text = System.Text.Encoding.UTF8.GetString(outputStream.ToArray());
+      var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
       Assert.Equal(3, lines.Length);
       Assert.Equal("first", ParseFields(lines[0])["msg"]);

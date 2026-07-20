@@ -52,9 +52,9 @@ public class ConsoleLogExporter : BaseExporter<LogRecord>
             }
             catch (Exception ex)
             {
-                // Defense in depth: ExtractAttributes is already throw-safe, but never let a single
-                // malformed record fail the whole batch export. Emit a best-effort diagnostic and
-                // continue so the remaining records are still exported.
+                // Never let a single malformed record fail the whole batch export: a member the
+                // extraction reads (e.g. a hostile Exception.StackTrace) can still throw, so contain it
+                // here, emit a best-effort diagnostic, and continue so the remaining records export.
                 try
                 {
                     _logger.Log(SeverityLevel.Error, new KeyValuePair<string, string>(Logger.MessageKey, $"[EXPORT ERROR: {Logger.SafeExceptionMessage(ex)}]"));
