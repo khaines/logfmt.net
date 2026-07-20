@@ -71,11 +71,15 @@ namespace Logfmt.Tests
       var logger = new Logger(outputStream);
       var exporter = new ConsoleLogExporter(logger);
 
-      // Should not throw
+      Assert.True(outputStream.CanWrite);
+
       exporter.Dispose();
 
-      // Double dispose should not throw
-      exporter.Dispose();
+      // Dispose trickles down to the inner Logger, which disposes the underlying stream.
+      Assert.False(outputStream.CanWrite);
+
+      // Double dispose is idempotent and does not throw.
+      Assert.Null(Record.Exception(() => exporter.Dispose()));
     }
 
     /// <summary>
@@ -271,6 +275,72 @@ namespace Logfmt.Tests
 
       Assert.Contains("event_id=42", output);
       Assert.Contains("event_name=MyEvent", output);
+    }
+
+    /// <summary>
+    /// Tests that an exception with a null StackTrace (a never-thrown exception) is exported with an
+    /// empty exception_stack rather than crashing.
+    /// </summary>
+    [Fact]
+    public void TestOpenTelemetryExceptionWithNullStackTraceEmitsEmptyStack()
+    {
+      var outputStream = new MemoryStream();
+      var customLogger = new Logger(outputStream);
+
+      using var loggerFactory = LoggerFactory.Create(builder =>
+      {
+        builder.AddOpenTelemetry(options =>
+        {
+          options.AddProcessor(new SimpleLogRecordExportProcessor(new ConsoleLogExporter(customLogger)));
+        });
+      });
+
+      var logger = loggerFactory.CreateLogger("cat");
+      logger.LogError(new InvalidOperationException("boom"), "err");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+      var fields = new Dictionary<string, string>();
+      foreach (var kvp in LogfmtParser.Parse(output))
+      {
+        fields[kvp.Key] = kvp.Value;
+      }
+
+      Assert.Equal("boom", fields["exception_msg"]);
+      Assert.Equal(string.Empty, fields["exception_stack"]);
+    }
+
+    /// <summary>
+    /// Tests that an exception whose Message getter throws does not escape export (never-throw); the
+    /// exporter falls back to the exception type name.
+    /// </summary>
+    [Fact]
+    public void TestOpenTelemetryExceptionWithThrowingMessageIsContained()
+    {
+      var outputStream = new MemoryStream();
+      var customLogger = new Logger(outputStream);
+
+      using var loggerFactory = LoggerFactory.Create(builder =>
+      {
+        builder.AddOpenTelemetry(options =>
+        {
+          options.AddProcessor(new SimpleLogRecordExportProcessor(new ConsoleLogExporter(customLogger)));
+        });
+      });
+
+      var logger = loggerFactory.CreateLogger("cat");
+
+      var ex = Record.Exception(() => logger.LogError(new ThrowingMessageException(), "err"));
+      Assert.Null(ex);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+      Assert.Contains("exception_msg=ThrowingMessageException", output);
+    }
+
+    private sealed class ThrowingMessageException : Exception
+    {
+      public override string Message => throw new InvalidOperationException("message getter threw");
     }
   }
 }

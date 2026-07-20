@@ -45,7 +45,24 @@ public class ConsoleLogExporter : BaseExporter<LogRecord>
 
         foreach (var record in batch)
         {
-            _logger.Log(record.LogLevel.ToSeverityLevel(), ExtractAttributes(record));
+            try
+            {
+                _logger.Log(record.LogLevel.ToSeverityLevel(), ExtractAttributes(record));
+            }
+            catch (Exception ex)
+            {
+                // Defense in depth: ExtractAttributes is already throw-safe, but never let a single
+                // malformed record fail the whole batch export. Emit a best-effort diagnostic and
+                // continue so the remaining records are still exported.
+                try
+                {
+                    _logger.Log(SeverityLevel.Error, new KeyValuePair<string, string>(Logger.MessageKey, $"[EXPORT ERROR: {Logger.SafeExceptionMessage(ex)}]"));
+                }
+                catch (Exception)
+                {
+                    // Swallow -- upholding the never-throw contract even if the diagnostic write fails.
+                }
+            }
         }
 
         return ExportResult.Success;
@@ -70,7 +87,7 @@ public class ConsoleLogExporter : BaseExporter<LogRecord>
         attributes.Add(new KeyValuePair<string, string>(Logger.MessageKey, record.FormattedMessage ?? record.Body ?? string.Empty));
         if (record.Exception is not null)
         {
-            attributes.Add(new KeyValuePair<string, string>("exception_msg", record.Exception.Message));
+            attributes.Add(new KeyValuePair<string, string>("exception_msg", Logger.SafeExceptionMessage(record.Exception)));
             attributes.Add(new KeyValuePair<string, string>("exception_stack", record.Exception.StackTrace ?? string.Empty));
         }
 
@@ -99,7 +116,7 @@ public class ConsoleLogExporter : BaseExporter<LogRecord>
         {
             foreach (var a in record.Attributes)
             {
-                attributes.Add(new KeyValuePair<string, string>(a.Key, a.Value?.ToString() ?? "null"));
+                attributes.Add(new KeyValuePair<string, string>(a.Key, a.Value is null ? "null" : Logger.SafeToString(a.Value)));
             }
         }
 

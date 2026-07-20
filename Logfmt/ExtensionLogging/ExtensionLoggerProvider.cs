@@ -52,7 +52,10 @@ public sealed class ExtensionLoggerProvider : ILoggerProvider
     /// <inheritdoc/>
     public void Dispose()
     {
-        // noop
+        // The cached ExtensionLoggers wrap core Loggers that write to Console.OpenStandardOutput().
+        // They are intentionally NOT disposed here: each Log() flushes immediately (so no buffered
+        // data is lost) and disposing would close the shared stdout handle. We only drop the cache
+        // and unsubscribe the options-change token.
         _loggers.Clear();
         _onChangeToken?.Dispose();
     }

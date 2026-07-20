@@ -148,8 +148,13 @@ namespace Logfmt.Tests
       ILogger logger = new ExtensionLogger(new Logger(outputStream), this.GetConfiguration, "test");
 
       using var scope = logger.BeginScope("test scope");
+      using var scope2 = logger.BeginScope("another scope");
 
       Assert.NotNull(scope);
+
+      // BeginScope is a no-op that always returns the same shared singleton; asserting reference
+      // equality across two calls kills a mutation that returns a fresh disposable per call.
+      Assert.Same(scope, scope2);
     }
 
     /// <summary>
@@ -1028,8 +1033,16 @@ namespace Logfmt.Tests
       outputStream.Seek(0, SeekOrigin.Begin);
       var content = new StreamReader(outputStream).ReadToEnd();
 
+      // Structural assertion: parse the single emitted record and assert msg is exactly "after"
+      // (kills a payload mutation that an over-broad substring check would miss); "before" was filtered.
+      var fields = new Dictionary<string, string>();
+      foreach (var kvp in LogfmtParser.Parse(content.Trim()))
+      {
+        fields[kvp.Key] = kvp.Value;
+      }
+
+      Assert.Equal("after", fields["msg"]);
       Assert.DoesNotContain("before", content);
-      Assert.Contains("after", content);
     }
 
     /// <summary>
@@ -1155,6 +1168,31 @@ namespace Logfmt.Tests
       Assert.Equal("value", fields["good"]);
       Assert.Contains("STATE ERROR", fields["state_error"]);
       Assert.Equal("survived", fields[Logger.MessageKey]);
+    }
+
+    /// <summary>
+    /// Tests that provider Dispose clears the per-category logger cache (so a later CreateLogger yields
+    /// a fresh instance) and is idempotent. The cached loggers wrap stdout and are intentionally not
+    /// disposed (documented on the provider).
+    /// </summary>
+    [Fact]
+    public void TestProviderDisposeClearsCacheAndIsIdempotent()
+    {
+      var config = new ExtensionLoggerConfiguration();
+      config.LogLevel["Default"] = LogLevel.Information;
+      var provider = new ExtensionLoggerProvider(new TestOptionsMonitor(config));
+
+      var logger1 = provider.CreateLogger("cat");
+      Assert.Same(logger1, provider.CreateLogger("cat"));
+
+      provider.Dispose();
+
+      // The cache was cleared, so a post-dispose CreateLogger builds a fresh instance.
+      var logger2 = provider.CreateLogger("cat");
+      Assert.NotSame(logger1, logger2);
+
+      // Dispose is idempotent.
+      Assert.Null(Record.Exception(() => provider.Dispose()));
     }
 
     private ExtensionLoggerConfiguration GetConfiguration()
