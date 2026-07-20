@@ -104,13 +104,13 @@ public class ExtensionLogger : ILogger
                     }
                     catch (Exception ex)
                     {
-                        props[prop.Key] = $"[VALUE ERROR: {SafeExceptionMessage(ex)}]";
+                        props[prop.Key] = $"[VALUE ERROR: {Logger.SafeExceptionMessage(ex)}]";
                     }
                 }
             }
             catch (Exception ex)
             {
-                props["state_error"] = $"[STATE ERROR: {SafeExceptionMessage(ex)}]";
+                props["state_error"] = $"[STATE ERROR: {Logger.SafeExceptionMessage(ex)}]";
             }
         }
 
@@ -123,7 +123,7 @@ public class ExtensionLogger : ILogger
             }
             catch (Exception ex)
             {
-                props[Logger.MessageKey] = $"[FORMATTER ERROR: {SafeExceptionMessage(ex)}]";
+                props[Logger.MessageKey] = $"[FORMATTER ERROR: {Logger.SafeExceptionMessage(ex)}]";
             }
         }
 
@@ -138,19 +138,5 @@ public class ExtensionLogger : ILogger
         }
 
         logger.Log(sevLevel, props.ToArray());
-    }
-
-    private static string SafeExceptionMessage(Exception ex)
-    {
-        try
-        {
-            return ex.Message;
-        }
-        catch (Exception)
-        {
-            // Exception.Message is overridable and can itself throw; fall back to the (non-virtual,
-            // safe) type name so the recovery path upholds the never-throw contract.
-            return ex.GetType().Name;
-        }
     }
 }

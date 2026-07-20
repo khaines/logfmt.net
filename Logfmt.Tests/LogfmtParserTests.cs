@@ -536,5 +536,21 @@ namespace Logfmt.Tests
       Assert.Equal("b", result[1].Key);
       Assert.Equal("2", result[1].Value);
     }
+
+    /// <summary>
+    /// Tests that a quoted value ending in a lone backslash at end-of-input parses without reading
+    /// past the buffer, keeping the trailing backslash as a literal.
+    /// </summary>
+    [Fact]
+    public void ParseQuotedValueEndingInBackslashAtEofDoesNotThrow()
+    {
+      // A quoted value whose final character is a lone backslash at end-of-input must not read past
+      // the buffer; the trailing backslash is kept as a literal.
+      var result = LogfmtParser.Parse("k=\"val\\");
+
+      Assert.Single(result);
+      Assert.Equal("k", result[0].Key);
+      Assert.Equal("val\\", result[0].Value);
+    }
   }
 }

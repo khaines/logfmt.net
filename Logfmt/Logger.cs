@@ -131,6 +131,13 @@ public sealed class Logger : IDisposable
     /// </summary>
     /// <param name="severity">The severity of the log entry.</param>
     /// <param name="kvpairs">labels and values to include with the entry.</param>
+    /// <remarks>
+    /// The logger always emits the reserved fields <c>ts</c> (timestamp) and <c>level</c> first, and
+    /// the <c>msg</c> field is emitted by the message-based overloads. A caller-supplied key that
+    /// sanitizes to <c>ts</c>, <c>level</c>, or <c>msg</c> is still written, producing a duplicate
+    /// field; the logfmt format permits duplicate keys and typical consumers take the last value.
+    /// Avoid reusing these reserved keys to keep output unambiguous.
+    /// </remarks>
     public void Log(SeverityLevel severity, params KeyValuePair<string, string>[] kvpairs)
     {
         if (!IsEnabled(severity))
@@ -263,8 +270,20 @@ public sealed class Logger : IDisposable
         pairs[0] = new KeyValuePair<string, string>(MessageKey, msg);
         for (var i = 0; i < kvpairs.Length; i += 2)
         {
-            var key = kvpairs[i]?.ToString() ?? string.Empty;
-            var value = kvpairs[i + 1]?.ToString();
+            var key = SafeToString(kvpairs[i]);
+
+            // Preserve the existing null-value contract (a null renders as "null" in AppendValueField);
+            // only a THROWING ToString is contained, upholding the never-throw contract.
+            string? value;
+            try
+            {
+                value = kvpairs[i + 1]?.ToString();
+            }
+            catch (Exception ex)
+            {
+                value = $"[VALUE ERROR: {SafeExceptionMessage(ex)}]";
+            }
+
             pairs[1 + (i / 2)] = new KeyValuePair<string, string>(key, value!);
         }
 
@@ -291,6 +310,48 @@ public sealed class Logger : IDisposable
     public void SetSeverityFilter(SeverityLevel level)
     {
         levelFilter = level;
+    }
+
+    /// <summary>
+    /// Converts a value to its string representation without ever throwing. A value whose
+    /// <see cref="object.ToString"/> override throws yields a <c>[VALUE ERROR: ...]</c> placeholder so
+    /// the logging call upholds the never-throw contract.
+    /// </summary>
+    /// <param name="value">The value to stringify.</param>
+    /// <returns>The string representation, an empty string for null, or a placeholder on failure.</returns>
+    internal static string SafeToString(object? value)
+    {
+        if (value is null)
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            return value.ToString() ?? string.Empty;
+        }
+        catch (Exception ex)
+        {
+            return $"[VALUE ERROR: {SafeExceptionMessage(ex)}]";
+        }
+    }
+
+    /// <summary>
+    /// Returns an exception's message without ever throwing; a custom <see cref="Exception.Message"/>
+    /// override can itself throw, in which case the exception type name is returned instead.
+    /// </summary>
+    /// <param name="ex">The exception whose message is required.</param>
+    /// <returns>The message, or the exception type name if the getter throws.</returns>
+    internal static string SafeExceptionMessage(Exception ex)
+    {
+        try
+        {
+            return ex.Message;
+        }
+        catch (Exception)
+        {
+            return ex.GetType().Name;
+        }
     }
 
     private static void CheckParamArrayLength<T>(T[] kvpairs)

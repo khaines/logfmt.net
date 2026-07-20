@@ -40,10 +40,12 @@ namespace Logfmt.Tests
     {
       var exporter = new ConsoleLogExporter();
 
-      Assert.NotNull(exporter);
+      // An active exporter reports Success; a disposed one reports Failure without throwing.
+      Assert.Equal(ExportResult.Success, exporter.Export(default));
 
-      // Should not throw when disposing
       exporter.Dispose();
+
+      Assert.Equal(ExportResult.Failure, exporter.Export(default));
     }
 
     /// <summary>
@@ -56,7 +58,8 @@ namespace Logfmt.Tests
       var logger = new Logger(outputStream);
       var exporter = new ConsoleLogExporter(logger);
 
-      Assert.NotNull(exporter);
+      // The custom-logger exporter is functional: Export returns Success on an empty batch.
+      Assert.Equal(ExportResult.Success, exporter.Export(default));
 
       exporter.Dispose();
     }
@@ -71,11 +74,15 @@ namespace Logfmt.Tests
       var logger = new Logger(outputStream);
       var exporter = new ConsoleLogExporter(logger);
 
-      // Should not throw
+      Assert.True(outputStream.CanWrite);
+
       exporter.Dispose();
 
-      // Double dispose should not throw
-      exporter.Dispose();
+      // Dispose trickles down to the inner Logger, which disposes the underlying stream.
+      Assert.False(outputStream.CanWrite);
+
+      // Double dispose is idempotent and does not throw.
+      Assert.Null(Record.Exception(() => exporter.Dispose()));
     }
 
     /// <summary>
@@ -105,10 +112,11 @@ namespace Logfmt.Tests
       var reader = new StreamReader(outputStream);
       var output = reader.ReadLine();
 
-      // Should contain basic log structure with timestamp
-      Assert.Contains("level=info", output, StringComparison.InvariantCultureIgnoreCase);
-      Assert.Contains("msg=\"Test message from OpenTelemetry\"", output, StringComparison.InvariantCultureIgnoreCase);
-      Assert.Contains("ts=", output, StringComparison.InvariantCultureIgnoreCase);
+      // Structural: parse the record and assert exact field values.
+      var fields = ParseFields(output);
+      Assert.Equal("info", fields["level"]);
+      Assert.Equal("Test message from OpenTelemetry", fields["msg"]);
+      Assert.True(fields.ContainsKey("ts"));
     }
 
     /// <summary>
@@ -146,10 +154,12 @@ namespace Logfmt.Tests
       var warningLine = reader.ReadLine();
       var errorLine = reader.ReadLine();
 
-      Assert.Contains("level=debug", debugLine, StringComparison.InvariantCultureIgnoreCase);
-      Assert.Contains("level=info", infoLine, StringComparison.InvariantCultureIgnoreCase);
-      Assert.Contains("level=warn", warningLine, StringComparison.InvariantCultureIgnoreCase);
-      Assert.Contains("level=error", errorLine, StringComparison.InvariantCultureIgnoreCase);
+      Assert.Equal("debug", ParseFields(debugLine)["level"]);
+      Assert.Equal("info", ParseFields(infoLine)["level"]);
+      Assert.Equal("warn", ParseFields(warningLine)["level"]);
+      Assert.Equal("error", ParseFields(errorLine)["level"]);
+      Assert.Equal("Debug message", ParseFields(debugLine)["msg"]);
+      Assert.Equal("Error message", ParseFields(errorLine)["msg"]);
     }
 
     /// <summary>
@@ -271,6 +281,127 @@ namespace Logfmt.Tests
 
       Assert.Contains("event_id=42", output);
       Assert.Contains("event_name=MyEvent", output);
+    }
+
+    /// <summary>
+    /// Tests that an exception with a null StackTrace (a never-thrown exception) is exported with an
+    /// empty exception_stack rather than crashing.
+    /// </summary>
+    [Fact]
+    public void TestOpenTelemetryExceptionWithNullStackTraceEmitsEmptyStack()
+    {
+      var outputStream = new MemoryStream();
+      var customLogger = new Logger(outputStream);
+
+      using var loggerFactory = LoggerFactory.Create(builder =>
+      {
+        builder.AddOpenTelemetry(options =>
+        {
+          options.AddProcessor(new SimpleLogRecordExportProcessor(new ConsoleLogExporter(customLogger)));
+        });
+      });
+
+      var logger = loggerFactory.CreateLogger("cat");
+      logger.LogError(new InvalidOperationException("boom"), "err");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+      var fields = new Dictionary<string, string>();
+      foreach (var kvp in LogfmtParser.Parse(output))
+      {
+        fields[kvp.Key] = kvp.Value;
+      }
+
+      Assert.Equal("boom", fields["exception_msg"]);
+      Assert.Equal(string.Empty, fields["exception_stack"]);
+    }
+
+    /// <summary>
+    /// Tests that an exception whose Message getter throws does not escape export (never-throw); the
+    /// exporter falls back to the exception type name.
+    /// </summary>
+    [Fact]
+    public void TestOpenTelemetryExceptionWithThrowingMessageIsContained()
+    {
+      var outputStream = new MemoryStream();
+      var customLogger = new Logger(outputStream);
+
+      using var loggerFactory = LoggerFactory.Create(builder =>
+      {
+        builder.AddOpenTelemetry(options =>
+        {
+          options.AddProcessor(new SimpleLogRecordExportProcessor(new ConsoleLogExporter(customLogger)));
+        });
+      });
+
+      var logger = loggerFactory.CreateLogger("cat");
+
+      var ex = Record.Exception(() => logger.LogError(new ThrowingMessageException(), "err"));
+      Assert.Null(ex);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+      Assert.Contains("exception_msg=ThrowingMessageException", output);
+    }
+
+    /// <summary>
+    /// Tests that a hostile record (whose exception StackTrace getter throws inside ExtractAttributes)
+    /// is contained per-record with an [EXPORT ERROR] marker and does not abort export of the other
+    /// records in the SAME batch (a batching processor delivers all three to one Export call).
+    /// </summary>
+    [Fact]
+    public void TestOpenTelemetryHostileRecordDoesNotAbortBatch()
+    {
+      var outputStream = new MemoryStream();
+      var customLogger = new Logger(outputStream);
+
+      // A batching processor so all three records reach the exporter in a SINGLE Export call; this
+      // proves the per-record try/catch lets the loop CONTINUE past the hostile middle record.
+      var loggerFactory = LoggerFactory.Create(builder =>
+      {
+        builder.AddOpenTelemetry(options =>
+        {
+          options.AddProcessor(new BatchLogRecordExportProcessor(new ConsoleLogExporter(customLogger)));
+        });
+      });
+
+      var logger = loggerFactory.CreateLogger("cat");
+      logger.LogInformation("first");
+      logger.LogError(new ThrowingStackTraceException(), "hostile");
+      logger.LogInformation("third");
+
+      // Dispose flushes the queued batch through one Export call before we read. It also disposes the
+      // underlying stream, so read the captured bytes via ToArray() (valid after a MemoryStream close).
+      loggerFactory.Dispose();
+
+      var text = System.Text.Encoding.UTF8.GetString(outputStream.ToArray());
+      var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+      Assert.Equal(3, lines.Length);
+      Assert.Equal("first", ParseFields(lines[0])["msg"]);
+      Assert.Contains("[EXPORT ERROR:", ParseFields(lines[1])["msg"]);
+      Assert.Equal("third", ParseFields(lines[2])["msg"]);
+    }
+
+    private static Dictionary<string, string> ParseFields(string line)
+    {
+      var fields = new Dictionary<string, string>();
+      foreach (var kvp in LogfmtParser.Parse(line))
+      {
+        fields[kvp.Key] = kvp.Value;
+      }
+
+      return fields;
+    }
+
+    private sealed class ThrowingStackTraceException : Exception
+    {
+      public override string StackTrace => throw new InvalidOperationException("stack getter threw");
+    }
+
+    private sealed class ThrowingMessageException : Exception
+    {
+      public override string Message => throw new InvalidOperationException("message getter threw");
     }
   }
 }

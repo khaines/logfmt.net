@@ -39,13 +39,31 @@ public class ConsoleLogExporter : BaseExporter<LogRecord>
     {
         if (_isDisposed)
         {
-            Console.Error.WriteLine("Warning: Attempted to export logs using a disposed ConsoleLogExporter.");
+            // A disposed exporter reports Failure rather than writing a diagnostic to a possibly
+            // hostile or redirected stderr (which could throw and break the never-throw contract).
             return ExportResult.Failure;
         }
 
         foreach (var record in batch)
         {
-            _logger.Log(record.LogLevel.ToSeverityLevel(), ExtractAttributes(record));
+            try
+            {
+                _logger.Log(record.LogLevel.ToSeverityLevel(), ExtractAttributes(record));
+            }
+            catch (Exception ex)
+            {
+                // Never let a single malformed record fail the whole batch export: a member the
+                // extraction reads (e.g. a hostile Exception.StackTrace) can still throw, so contain it
+                // here, emit a best-effort diagnostic, and continue so the remaining records export.
+                try
+                {
+                    _logger.Log(SeverityLevel.Error, new KeyValuePair<string, string>(Logger.MessageKey, $"[EXPORT ERROR: {Logger.SafeExceptionMessage(ex)}]"));
+                }
+                catch (Exception)
+                {
+                    // Swallow -- upholding the never-throw contract even if the diagnostic write fails.
+                }
+            }
         }
 
         return ExportResult.Success;
@@ -70,7 +88,7 @@ public class ConsoleLogExporter : BaseExporter<LogRecord>
         attributes.Add(new KeyValuePair<string, string>(Logger.MessageKey, record.FormattedMessage ?? record.Body ?? string.Empty));
         if (record.Exception is not null)
         {
-            attributes.Add(new KeyValuePair<string, string>("exception_msg", record.Exception.Message));
+            attributes.Add(new KeyValuePair<string, string>("exception_msg", Logger.SafeExceptionMessage(record.Exception)));
             attributes.Add(new KeyValuePair<string, string>("exception_stack", record.Exception.StackTrace ?? string.Empty));
         }
 
@@ -99,7 +117,7 @@ public class ConsoleLogExporter : BaseExporter<LogRecord>
         {
             foreach (var a in record.Attributes)
             {
-                attributes.Add(new KeyValuePair<string, string>(a.Key, a.Value?.ToString() ?? "null"));
+                attributes.Add(new KeyValuePair<string, string>(a.Key, a.Value is null ? "null" : Logger.SafeToString(a.Value)));
             }
         }
 
