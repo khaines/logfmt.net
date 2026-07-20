@@ -378,7 +378,56 @@ namespace Logfmt.Tests
       var reader = new StreamReader(outputStream);
       var output = reader.ReadLine();
 
-      Assert.Contains("data=\"hello\tworld\"", output);
+      // Tab is escaped as \t (previously emitted raw); the value round-trips through the parser.
+      Assert.Contains("data=\"hello\\tworld\"", output);
+      Assert.Equal("hello\tworld", ParseSingle(output)["data"]);
+    }
+
+    /// <summary>
+    /// Tests that C0/C1 control characters are escaped as \uXXXX (never emitted raw, closing the
+    /// terminal-escape-injection vector) and round-trip through the parser.
+    /// </summary>
+    [Fact]
+    public void ControlCharactersAreEscapedAsUnicodeAndRoundTrip()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      var value = "a\u0000b\u001bc\u0007d"; // NUL, ESC (terminal-escape vector), BEL
+      logger.Info("m", "k", value);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+
+      Assert.Contains("k=\"a\\u0000b\\u001bc\\u0007d\"", output);
+      Assert.DoesNotContain('\u001b', output); // no raw ESC survives (ordinal char check)
+      Assert.Equal(value, ParseSingle(output)["k"]);
+    }
+
+    /// <summary>
+    /// Tests that Unicode line separators (LS/PS/NEL) are escaped and never emitted raw, so a value
+    /// cannot forge a second record in consumers that treat them as line terminators. Round-trips.
+    /// </summary>
+    [Fact]
+    public void UnicodeLineSeparatorsAreEscapedAndNeverRaw()
+    {
+      foreach (var (sep, esc) in new[] { ("\u2028", "\\u2028"), ("\u2029", "\\u2029"), ("\u0085", "\\u0085") })
+      {
+        var outputStream = new MemoryStream();
+        using var logger = new Logger(outputStream);
+
+        var value = "x" + sep + "y";
+        logger.Info("m", "k", value);
+
+        outputStream.Seek(0, SeekOrigin.Begin);
+        var reader = new StreamReader(outputStream);
+        var output = reader.ReadLine();
+
+        Assert.Null(reader.ReadLine()); // exactly one physical record -- no forged second line
+        Assert.DoesNotContain(sep, output, StringComparison.Ordinal);
+        Assert.Contains("k=\"x" + esc + "y\"", output);
+        Assert.Equal(value, ParseSingle(output)["k"]);
+      }
     }
 
     /// <summary>
@@ -1049,7 +1098,9 @@ namespace Logfmt.Tests
       var reader = new StreamReader(outputStream);
       var output = reader.ReadLine();
 
-      Assert.Contains("data=\"line1\\r\\nline2\t\\\"quoted\\\"\\\\path\"", output);
+      // CR/LF/TAB are escaped (\r \n \t), quotes and backslash escaped; the value round-trips.
+      Assert.Contains("data=\"line1\\r\\nline2\\t\\\"quoted\\\"\\\\path\"", output);
+      Assert.Equal("line1\r\nline2\t\"quoted\"\\path", ParseSingle(output)["data"]);
     }
 
     /// <summary>
@@ -1663,6 +1714,17 @@ namespace Logfmt.Tests
     /// <summary>
     /// A <see cref="MemoryStream"/> whose writability can be toggled at runtime for testing.
     /// </summary>
+    private static Dictionary<string, string> ParseSingle(string line)
+    {
+      var fields = new Dictionary<string, string>();
+      foreach (var kvp in LogfmtParser.Parse(line))
+      {
+        fields[kvp.Key] = kvp.Value;
+      }
+
+      return fields;
+    }
+
     private sealed class ThrowingToString
     {
       public override string ToString() => throw new InvalidOperationException("boom-tostring");

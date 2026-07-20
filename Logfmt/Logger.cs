@@ -391,6 +391,8 @@ public sealed class Logger : IDisposable
                c == '_';
     }
 
+    private static bool IsEscapable(char c) => char.IsControl(c) || c == '\u2028' || c == '\u2029';
+
     private static void AppendValueField(StringBuilder buffer, string key, string value)
     {
         // Handle null values
@@ -406,8 +408,11 @@ public sealed class Logger : IDisposable
         for (int i = 0; i < value.Length; i++)
         {
             char c = value[i];
-            if (c == '"' || c == '\\' || c == '\r' || c == '\n')
+            if (c == '"' || c == '\\' || IsEscapable(c))
             {
+                // Quote and escape the delimiters plus any control character or Unicode line
+                // separator, so a value cannot forge extra records or inject terminal escape sequences
+                // into downstream consumers (char.IsControl covers CR/LF/TAB and the C0/C1 controls).
                 needsQuotes = true;
                 hasSpecialChars = true;
             }
@@ -443,8 +448,20 @@ public sealed class Logger : IDisposable
                     case '\n':
                         buffer.Append("\\n");
                         break;
+                    case '\t':
+                        buffer.Append("\\t");
+                        break;
                     default:
-                        buffer.Append(c);
+                        if (IsEscapable(c))
+                        {
+                            buffer.Append("\\u");
+                            buffer.Append(((int)c).ToString("x4", CultureInfo.InvariantCulture));
+                        }
+                        else
+                        {
+                            buffer.Append(c);
+                        }
+
                         break;
                 }
             }

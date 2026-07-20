@@ -552,5 +552,33 @@ namespace Logfmt.Tests
       Assert.Equal("k", result[0].Key);
       Assert.Equal("val\\", result[0].Value);
     }
+
+    /// <summary>
+    /// Tests that a \uXXXX escape in a quoted value is decoded to the corresponding character.
+    /// </summary>
+    [Fact]
+    public void ParseDecodesUnicodeEscape()
+    {
+      var result = LogfmtParser.Parse("k=\"a\\u2028b\\u001bc\"");
+
+      Assert.Single(result);
+      Assert.Equal("a\u2028b\u001bc", result[0].Value);
+    }
+
+    /// <summary>
+    /// Tests that a malformed \u escape (invalid hex, or truncated at end-of-input) does not throw and
+    /// keeps the backslash literally.
+    /// </summary>
+    [Fact]
+    public void ParseMalformedUnicodeEscapeIsHandledGracefully()
+    {
+      var badHex = LogfmtParser.Parse("k=\"a\\uZZZZb\"");
+      Assert.Single(badHex);
+      Assert.Equal("a\\uZZZZb", badHex[0].Value);
+
+      var truncated = LogfmtParser.Parse("k=\"a\\u12");
+      Assert.Single(truncated);
+      Assert.Equal("a\\u12", truncated[0].Value);
+    }
   }
 }

@@ -124,6 +124,20 @@ public static class LogfmtParser
                         buffer.Append('\t');
                         pos += 2;
                         break;
+                    case 'u':
+                        if (pos + 6 <= len &&
+                            int.TryParse(line.AsSpan(pos + 2, 4), System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out int codePoint))
+                        {
+                            buffer.Append((char)codePoint);
+                            pos += 6;
+                        }
+                        else
+                        {
+                            buffer.Append(line[pos]);
+                            pos++;
+                        }
+
+                        break;
                     default:
                         buffer.Append(line[pos]);
                         pos++;
