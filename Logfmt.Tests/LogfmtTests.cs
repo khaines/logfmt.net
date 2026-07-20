@@ -431,6 +431,28 @@ namespace Logfmt.Tests
     }
 
     /// <summary>
+    /// Tests that a literal backslash-u sequence in user text (e.g. \u0041) round-trips as literal text
+    /// and is NOT decoded to a character -- the encoder doubles the backslash, so the parser's \uXXXX
+    /// decode never fires on it.
+    /// </summary>
+    [Fact]
+    public void LiteralBackslashUTextRoundTripsWithoutDecoding()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      var value = @"\u0041 and \uZZZZ"; // literal backslash-u sequences, not real escapes
+      logger.Info("m", "k", value);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+
+      // The encoder doubles the backslash, so the parser restores the literal text (no decode to 'A').
+      Assert.Contains(@"k=""\\u0041 and \\uZZZZ""", output);
+      Assert.Equal(value, ParseSingle(output)["k"]);
+    }
+
+    /// <summary>
     /// Tests that double quotes in values are escaped.
     /// </summary>
     [Fact]
