@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- [SECURITY] Extensions.Logging: All category loggers created by an `ExtensionLoggerProvider` now share one root `Logger` (one stdout handle, one write lock). Previously each category opened its own stdout handle that was never released, and lines longer than the writer buffer from different categories could interleave and corrupt each other on stdout. A new `ExtensionLoggerProvider(IOptionsMonitor, Logger)` constructor lets callers supply the root logger.
+
 ## 1.1.1 / 2026-09-25
 
 - [SECURITY] Encoder: Control characters (C0/C1, including TAB and NEL U+0085) and the Unicode line separators U+2028/U+2029 are now quoted and escaped instead of emitted raw, closing a log-forgery vector and a terminal-escape-injection vector. The parser decodes `\uXXXX` escapes back to the original character. #90

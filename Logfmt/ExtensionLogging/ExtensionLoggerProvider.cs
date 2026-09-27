@@ -16,46 +16,67 @@ public sealed class ExtensionLoggerProvider : ILoggerProvider
     private const string Category = "category";
     private readonly IDisposable? _onChangeToken;
     private readonly ConcurrentDictionary<string, ExtensionLogger> _loggers = new (StringComparer.OrdinalIgnoreCase);
+    private readonly Logger _rootLogger;
     private ExtensionLoggerConfiguration _currentConfig;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="ExtensionLoggerProvider"/> class.
+    /// Initializes a new instance of the <see cref="ExtensionLoggerProvider"/> class that writes to stdout.
     /// </summary>
     /// <param name="config">The <see cref="Logfmt.ExtensionLogging.ExtensionLoggerConfiguration" /> logging configuration.</param>
+    [SuppressMessage(
+      "Microsoft.Reliability",
+      "CA2000:DisposeObjectsBeforeLosingScope",
+      Justification = "The root logger lives as long as the provider and is intentionally not disposed (see Dispose).")]
     public ExtensionLoggerProvider(IOptionsMonitor<ExtensionLoggerConfiguration> config)
+        : this(config, new Logger(SeverityLevel.Trace))
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ExtensionLoggerProvider"/> class that writes through the
+    /// given core <see cref="Logger"/>. Every category logger is derived from it, so all categories share its
+    /// output stream and write lock. The provider does not dispose it.
+    /// </summary>
+    /// <param name="config">The <see cref="Logfmt.ExtensionLogging.ExtensionLoggerConfiguration" /> logging configuration.</param>
+    /// <param name="logger">The core logger whose stream and lock every category logger shares.</param>
+    public ExtensionLoggerProvider(IOptionsMonitor<ExtensionLoggerConfiguration> config, Logger logger)
     {
         ArgumentNullException.ThrowIfNull(config, nameof(config));
+        ArgumentNullException.ThrowIfNull(logger, nameof(logger));
         if (config.CurrentValue == null)
         {
             throw new InvalidOperationException("ExtensionLoggerConfiguration is missing or invalid. Please ensure logging configuration is provided.");
         }
 
+        // The core Logger is intentionally unfiltered (Trace): ExtensionLogger.IsEnabled reads the
+        // live configuration on every call and is the single severity gate. Baking a level into the
+        // core Logger would double-gate and defeat runtime level-lowering (#70).
+        _rootLogger = logger;
+        _rootLogger.SetSeverityFilter(SeverityLevel.Trace);
         _currentConfig = config.CurrentValue;
         _onChangeToken = config.OnChange(updatedConfig => _currentConfig = updatedConfig);
     }
 
     /// <inheritdoc/>
-    [SuppressMessage(
-      "Microsoft.Reliability",
-      "CA2000:DisposeObjectsBeforeLosingScope",
-      Justification = "The created logger instance has a longer lifetime than the method it is created in.")]
     public ILogger CreateLogger(string categoryName)
     {
-        // The core Logger is intentionally unfiltered (Trace): ExtensionLogger.IsEnabled reads the
-        // live configuration on every call and is the single severity gate. Baking the creation-time
-        // level into the core Logger would double-gate and defeat runtime level-lowering (#70).
+        // Every category logger is derived from ONE root Logger via WithData, so all categories share
+        // the same output stream and the same write lock. Creating a separate Logger per category
+        // (a) opened one stdout handle per category, which was never released, and (b) gave each
+        // category its own lock, so lines longer than the writer buffer from different categories
+        // could interleave on stdout and corrupt each other.
         return _loggers.GetOrAdd(
             categoryName,
-            name => new ExtensionLogger(new Logger(SeverityLevel.Trace).WithData(Category, name), GetCurrentConfig, name));
+            name => new ExtensionLogger(_rootLogger.WithData(Category, name), GetCurrentConfig, name));
     }
 
     /// <inheritdoc/>
     public void Dispose()
     {
-        // The cached ExtensionLoggers wrap core Loggers that write to Console.OpenStandardOutput().
-        // They are intentionally NOT disposed here: each Log() flushes immediately (so no buffered
-        // data is lost) and disposing would close the shared stdout handle. We only drop the cache
-        // and unsubscribe the options-change token.
+        // The root Logger (and the category loggers derived from it) is intentionally NOT disposed
+        // here: each Log() flushes immediately (so no buffered data is lost), ILogger instances handed
+        // out earlier may still be in use, and disposing would close the stdout handle. We only drop
+        // the cache and unsubscribe the options-change token.
         _loggers.Clear();
         _onChangeToken?.Dispose();
     }
