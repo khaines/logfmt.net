@@ -383,6 +383,39 @@ namespace Logfmt.Tests
       Assert.Equal("third", ParseFields(lines[2])["msg"]);
     }
 
+    /// <summary>
+    /// Tests that a record with a lone surrogate does not silently disable the exporter: the record is
+    /// written with the surrogate escaped, and every later record is still exported.
+    /// </summary>
+    [Fact]
+    public void TestOpenTelemetryLoneSurrogateDoesNotPoisonExporter()
+    {
+      var outputStream = new MemoryStream();
+      var customLogger = new Logger(outputStream);
+
+      var loggerFactory = LoggerFactory.Create(builder =>
+      {
+        builder.AddOpenTelemetry(options =>
+        {
+          options.AddProcessor(new SimpleLogRecordExportProcessor(new ConsoleLogExporter(customLogger)));
+        });
+      });
+
+      var logger = loggerFactory.CreateLogger("cat");
+      logger.LogInformation("clean-1");
+      logger.LogInformation("hostile {V}", "\ud800");
+      logger.LogInformation("clean-2");
+      loggerFactory.Dispose();
+
+      var text = System.Text.Encoding.UTF8.GetString(outputStream.ToArray());
+      var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+      Assert.Equal(3, lines.Length);
+      Assert.Equal("clean-1", ParseFields(lines[0])["msg"]);
+      Assert.Equal("\ud800", ParseFields(lines[1])["V"]);
+      Assert.Equal("clean-2", ParseFields(lines[2])["msg"]);
+    }
+
     private static Dictionary<string, string> ParseFields(string line)
     {
       var fields = new Dictionary<string, string>();

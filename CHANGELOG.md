@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- [SECURITY] Encoder: An unpaired UTF-16 surrogate in a value is now quoted and escaped as `\uXXXX` instead of reaching the writer raw. Previously the writer's throwing UTF-8 encoding raised `EncoderFallbackException` out of `Log()` and left the bad chars in its buffer, so every later log call on that logger failed too (and the OpenTelemetry exporter silently dropped all later records). The writer now uses a non-throwing encoding and the write catch covers encoder errors as a backstop.
+
 ## 1.1.1 / 2026-09-25
 
 - [SECURITY] Encoder: Control characters (C0/C1, including TAB and NEL U+0085) and the Unicode line separators U+2028/U+2029 are now quoted and escaped instead of emitted raw, closing a log-forgery vector and a terminal-escape-injection vector. The parser decodes `\uXXXX` escapes back to the original character. #90
