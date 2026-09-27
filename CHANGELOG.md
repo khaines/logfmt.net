@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- [BUGFIX] Extensions.Logging: `ILogger.Log` now emits `exception_type`, `exception_msg` and `exception_stack` for the exception passed to it, matching the OpenTelemetry exporter. Previously the exception was only handed to the formatter, so `LogError(ex, ...)` dropped it entirely.
+
 ## 1.1.1 / 2026-09-25
 
 - [SECURITY] Encoder: Control characters (C0/C1, including TAB and NEL U+0085) and the Unicode line separators U+2028/U+2029 are now quoted and escaped instead of emitted raw, closing a log-forgery vector and a terminal-escape-injection vector. The parser decodes `\uXXXX` escapes back to the original character. #90

@@ -127,6 +127,16 @@ public class ExtensionLogger : ILogger
             }
         }
 
+        // exception: emit the same fields as the OpenTelemetry exporter so security-relevant failures
+        // (auth errors, deserialisation faults, ...) keep their type, message and stack trace instead
+        // of being reduced to whatever the formatter chose to include (usually nothing).
+        if (exception is not null)
+        {
+            props["exception_type"] = exception.GetType().FullName ?? exception.GetType().Name;
+            props["exception_msg"] = Logger.SafeExceptionMessage(exception);
+            props["exception_stack"] = SafeStackTrace(exception);
+        }
+
         // event id
         if (eventId.Id != 0 || !string.IsNullOrWhiteSpace(eventId.Name))
         {
@@ -138,5 +148,23 @@ public class ExtensionLogger : ILogger
         }
 
         logger.Log(sevLevel, props.ToArray());
+    }
+
+    /// <summary>
+    /// Returns an exception's stack trace without ever throwing; a custom <see cref="Exception.StackTrace"/>
+    /// override can itself throw (never-throw contract).
+    /// </summary>
+    /// <param name="ex">The exception whose stack trace is required.</param>
+    /// <returns>The stack trace, or an empty string if there is none or the getter throws.</returns>
+    private static string SafeStackTrace(Exception ex)
+    {
+        try
+        {
+            return ex.StackTrace ?? string.Empty;
+        }
+        catch (Exception)
+        {
+            return string.Empty;
+        }
     }
 }

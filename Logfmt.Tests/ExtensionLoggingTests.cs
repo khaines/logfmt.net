@@ -136,6 +136,77 @@ namespace Logfmt.Tests
 
       Assert.Contains("level=error", output);
       Assert.Contains("msg=\"An error occurred\"", output);
+
+      // The exception itself must be emitted, not just the formatted message: type, message and stack.
+      var fields = ParseFields(output);
+      Assert.Equal("System.InvalidOperationException", fields["exception_type"]);
+      Assert.Equal("something broke", fields["exception_msg"]);
+      Assert.True(fields.ContainsKey("exception_stack"));
+    }
+
+    /// <summary>
+    /// Tests that a thrown exception's stack trace is emitted and round-trips as one field.
+    /// </summary>
+    [Fact]
+    public void TestILoggerThrownExceptionEmitsStackTrace()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream), this.GetConfiguration, "test");
+
+      Exception thrown;
+      try
+      {
+        throw new InvalidOperationException("boom");
+      }
+      catch (InvalidOperationException ex)
+      {
+        thrown = ex;
+      }
+
+      logger.LogError(thrown, "failed");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+      Assert.Null(reader.ReadLine());
+
+      var fields = ParseFields(output);
+      Assert.Equal("boom", fields["exception_msg"]);
+      Assert.Contains(nameof(this.TestILoggerThrownExceptionEmitsStackTrace), fields["exception_stack"]);
+    }
+
+    /// <summary>
+    /// Tests that an exception whose StackTrace getter throws is still logged without throwing.
+    /// </summary>
+    [Fact]
+    public void TestILoggerThrowingStackTraceIsContained()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream), this.GetConfiguration, "test");
+
+      logger.LogError(new ThrowingStackTraceException(), "hostile");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var fields = ParseFields(new StreamReader(outputStream).ReadLine());
+      Assert.Equal("hostile", fields["msg"]);
+      Assert.Equal(string.Empty, fields["exception_stack"]);
+      Assert.Contains("ThrowingStackTraceException", fields["exception_type"]);
+    }
+
+    /// <summary>
+    /// Tests that no exception fields are emitted when no exception is passed.
+    /// </summary>
+    [Fact]
+    public void TestILoggerNoExceptionFieldsWithoutException()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream), this.GetConfiguration, "test");
+
+      logger.LogInformation("plain");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+      Assert.DoesNotContain("exception_", output);
     }
 
     /// <summary>
@@ -1195,6 +1266,17 @@ namespace Logfmt.Tests
       Assert.Null(Record.Exception(() => provider.Dispose()));
     }
 
+    private static Dictionary<string, string> ParseFields(string line)
+    {
+      var fields = new Dictionary<string, string>();
+      foreach (var kvp in LogfmtParser.Parse(line ?? string.Empty))
+      {
+        fields[kvp.Key] = kvp.Value;
+      }
+
+      return fields;
+    }
+
     private ExtensionLoggerConfiguration GetConfiguration()
     {
       var config = new ExtensionLoggerConfiguration();
@@ -1269,6 +1351,11 @@ namespace Logfmt.Tests
         return null;
       }
 #nullable restore
+    }
+
+    private sealed class ThrowingStackTraceException : Exception
+    {
+      public override string StackTrace => throw new InvalidOperationException("stack getter threw");
     }
   }
 }
