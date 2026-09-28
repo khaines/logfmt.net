@@ -732,16 +732,21 @@ namespace Logfmt.Tests
 
       var levels = new[] { SeverityLevel.Trace, SeverityLevel.Debug, SeverityLevel.Info, SeverityLevel.Warn, SeverityLevel.Error, SeverityLevel.Fatal };
 
+      // Workers run on dedicated (LongRunning) threads and are capped at MaxIterations each. On a
+      // thread pool, six tight loops starve the Task.Delay continuation below, so the loops kept
+      // writing for many seconds and overflowed the MemoryStream (2 GB) on CI runners.
+      const int MaxIterations = 50_000;
       var workers = new System.Threading.Tasks.Task[6];
       for (int i = 0; i < workers.Length; i++)
       {
         var isChanger = i >= 4;
-        workers[i] = System.Threading.Tasks.Task.Run(() =>
+        workers[i] = System.Threading.Tasks.Task.Factory.StartNew(
+          () =>
         {
           try
           {
             var n = 0;
-            while (!cts.Token.IsCancellationRequested)
+            while (!cts.Token.IsCancellationRequested && n < MaxIterations)
             {
               if (isChanger)
               {
@@ -759,7 +764,10 @@ namespace Logfmt.Tests
           {
             exceptions.Add(ex);
           }
-        });
+        },
+          System.Threading.CancellationToken.None,
+          System.Threading.Tasks.TaskCreationOptions.LongRunning,
+          System.Threading.Tasks.TaskScheduler.Default);
       }
 
       await System.Threading.Tasks.Task.Delay(100);
@@ -1665,23 +1673,32 @@ namespace Logfmt.Tests
       var exceptions = new System.Collections.Concurrent.ConcurrentBag<Exception>();
       using var cts = new System.Threading.CancellationTokenSource();
 
+      // Dedicated (LongRunning) threads with an iteration cap, for the same reason as in
+      // ConcurrentFilterChangesDoNotThrow: pool-starved tight loops can run unbounded.
+      const int MaxIterations = 50_000;
       var writers = new System.Threading.Tasks.Task[8];
       for (int i = 0; i < writers.Length; i++)
       {
-        writers[i] = System.Threading.Tasks.Task.Run(() =>
+        writers[i] = System.Threading.Tasks.Task.Factory.StartNew(
+          () =>
         {
           try
           {
-            while (!cts.Token.IsCancellationRequested)
+            var n = 0;
+            while (!cts.Token.IsCancellationRequested && n < MaxIterations)
             {
               logger.Info("concurrent");
+              n++;
             }
           }
           catch (Exception ex)
           {
             exceptions.Add(ex);
           }
-        });
+        },
+          System.Threading.CancellationToken.None,
+          System.Threading.Tasks.TaskCreationOptions.LongRunning,
+          System.Threading.Tasks.TaskScheduler.Default);
       }
 
       await System.Threading.Tasks.Task.Delay(50);
