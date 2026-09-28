@@ -184,6 +184,113 @@ namespace Logfmt.Tests
     /// <summary>
     /// An <see cref="Microsoft.Extensions.Options.IOptionsMonitor{TOptions}"/> whose value can be changed at runtime.
     /// </summary>
+    /// <summary>
+    /// Tests that every category logger created by one provider shares the root logger's stream and
+    /// write lock, so long lines written concurrently from different categories never interleave.
+    /// Previously each category got its own Logger, stream and lock, and lines longer than the writer
+    /// buffer were torn on stdout.
+    /// </summary>
+    [Fact]
+    public void ConcurrentCategoriesDoNotInterleaveLongLines()
+    {
+      var config = new ExtensionLoggerConfiguration();
+      config.LogLevel["Default"] = LogLevel.Trace;
+      var output = new System.IO.MemoryStream();
+      using var provider = new ExtensionLoggerProvider(new ChangeableOptionsMonitor(config), new Logger(output));
+
+      var a = provider.CreateLogger("CatA");
+      var b = provider.CreateLogger("CatB");
+      var bigA = new string('A', 3000);
+      var bigB = new string('B', 3000);
+      const int perThread = 200;
+
+      var t1 = new System.Threading.Thread(() =>
+      {
+        for (int i = 0; i < perThread; i++)
+        {
+          a.LogInformation("x {V}", bigA);
+        }
+      });
+      var t2 = new System.Threading.Thread(() =>
+      {
+        for (int i = 0; i < perThread; i++)
+        {
+          b.LogInformation("x {V}", bigB);
+        }
+      });
+      t1.Start();
+      t2.Start();
+      t1.Join();
+      t2.Join();
+
+      var text = System.Text.Encoding.UTF8.GetString(output.ToArray());
+      var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+      Assert.Equal(2 * perThread, lines.Length);
+
+      foreach (var line in lines)
+      {
+        var fields = new Dictionary<string, string>();
+        foreach (var kvp in LogfmtParser.Parse(line))
+        {
+          fields[kvp.Key] = kvp.Value;
+        }
+
+        // One intact record per line: a single timestamp, and the value matches its category exactly.
+        Assert.StartsWith("ts=", line, StringComparison.Ordinal);
+        Assert.Equal(1, CountOccurrences(line, "ts="));
+        var expected = fields["category"] == "CatA" ? bigA : bigB;
+        Assert.Equal(expected, fields["V"]);
+      }
+    }
+
+    /// <summary>
+    /// Tests that category loggers derived from an explicit root logger write to its stream and tag
+    /// each line with the category.
+    /// </summary>
+    [Fact]
+    public void CategoryLoggersWriteThroughSuppliedRootLogger()
+    {
+      var config = new ExtensionLoggerConfiguration();
+      config.LogLevel["Default"] = LogLevel.Information;
+      var output = new System.IO.MemoryStream();
+
+      // A Warn-filtered root logger: the provider must reset it to Trace so ILogger config is the only gate.
+      using var provider = new ExtensionLoggerProvider(new ChangeableOptionsMonitor(config), new Logger(output, SeverityLevel.Warn));
+
+      provider.CreateLogger("One").LogInformation("first");
+      provider.CreateLogger("Two").LogInformation("second");
+
+      var lines = System.Text.Encoding.UTF8.GetString(output.ToArray()).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+      Assert.Equal(2, lines.Length);
+      Assert.Contains("category=One", lines[0]);
+      Assert.Contains("msg=\"first\"", lines[0]);
+      Assert.Contains("category=Two", lines[1]);
+      Assert.Contains("msg=\"second\"", lines[1]);
+    }
+
+    /// <summary>
+    /// Tests that a null root logger is rejected.
+    /// </summary>
+    [Fact]
+    public void NullRootLoggerThrows()
+    {
+      var monitor = new ChangeableOptionsMonitor(new ExtensionLoggerConfiguration());
+      Assert.Throws<ArgumentNullException>(() => new ExtensionLoggerProvider(monitor, null!));
+    }
+
+    private static int CountOccurrences(string text, string token)
+    {
+      int count = 0;
+      int idx = 0;
+      while ((idx = text.IndexOf(token, idx, StringComparison.Ordinal)) >= 0)
+      {
+        count++;
+        idx += token.Length;
+      }
+
+      return count;
+    }
+
     private sealed class ChangeableOptionsMonitor : Microsoft.Extensions.Options.IOptionsMonitor<ExtensionLoggerConfiguration>
     {
 #nullable enable
