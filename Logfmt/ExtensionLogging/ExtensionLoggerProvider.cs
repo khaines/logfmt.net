@@ -38,7 +38,14 @@ public sealed class ExtensionLoggerProvider : ILoggerProvider
     /// output stream and write lock. The provider does not dispose it.
     /// </summary>
     /// <param name="config">The <see cref="Logfmt.ExtensionLogging.ExtensionLoggerConfiguration" /> logging configuration.</param>
-    /// <param name="logger">The core logger whose stream and lock every category logger shares.</param>
+    /// <param name="logger">
+    /// The core logger whose stream and lock every category logger shares. The provider takes over its
+    /// severity filter, immediately resetting it to <see cref="SeverityLevel.Trace"/> and keeping it there
+    /// for the life of the provider (the <c>ILogger</c> configuration is the only severity gate; see the
+    /// remarks in the constructor body). Pass an instance dedicated to this provider -- calling
+    /// <c>SetSeverityFilter</c> on it afterwards, or logging through it directly outside the
+    /// provider, will not behave as an unfiltered <see cref="Logger"/> instance normally would.
+    /// </param>
     public ExtensionLoggerProvider(IOptionsMonitor<ExtensionLoggerConfiguration> config, Logger logger)
     {
         ArgumentNullException.ThrowIfNull(config, nameof(config));
