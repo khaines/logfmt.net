@@ -88,6 +88,7 @@ public class ConsoleLogExporter : BaseExporter<LogRecord>
         attributes.Add(new KeyValuePair<string, string>(Logger.MessageKey, record.FormattedMessage ?? record.Body ?? string.Empty));
         if (record.Exception is not null)
         {
+            attributes.Add(new KeyValuePair<string, string>("exception_type", record.Exception.GetType().FullName ?? record.Exception.GetType().Name));
             attributes.Add(new KeyValuePair<string, string>("exception_msg", Logger.SafeExceptionMessage(record.Exception)));
             attributes.Add(new KeyValuePair<string, string>("exception_stack", record.Exception.StackTrace ?? string.Empty));
         }
