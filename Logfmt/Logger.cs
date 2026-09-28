@@ -72,7 +72,12 @@ public sealed class Logger : IDisposable
     {
         this.levelFilter = levelFilter;
         _outputStream = stream;
-        _output = new StreamWriter(_outputStream);
+
+        // Never throw on an unpaired UTF-16 surrogate: the default StreamWriter encoding throws
+        // EncoderFallbackException and leaves the bad chars in its buffer, so every later write on the
+        // same writer throws too. The encoder escapes lone surrogates before they reach the writer,
+        // and a replacing encoding is the backstop so nothing can poison the writer.
+        _output = new StreamWriter(_outputStream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: false));
         _writeLock = writeLock;
         includedData = new List<KeyValuePair<string, string>>();
     }
@@ -197,11 +202,12 @@ public sealed class Logger : IDisposable
                     _output.WriteLine(buffer.ToString());
                     _output.Flush();
                 }
-                catch (Exception ex) when (ex is ObjectDisposedException or IOException or NotSupportedException)
+                catch (Exception ex) when (ex is ObjectDisposedException or IOException or NotSupportedException or ArgumentException)
                 {
                     // The stream or writer failed or was disposed (e.g. Dispose on another thread,
-                    // a broken pipe, or a non-writable stream); drop this entry rather than surface
-                    // an exception to the caller, per the never-throw-on-bad-stream contract.
+                    // a broken pipe, a non-writable stream, or an encoder fallback error, which is an
+                    // ArgumentException); drop this entry rather than surface an exception to the
+                    // caller, per the never-throw-on-bad-stream contract.
                 }
             }
         }
@@ -393,6 +399,26 @@ public sealed class Logger : IDisposable
 
     private static bool IsEscapable(char c) => char.IsControl(c) || c == '\u2028' || c == '\u2029';
 
+    /// <summary>
+    /// Returns true when the char at <paramref name="i"/> is a surrogate that is not part of a valid
+    /// high/low pair. Such a char has no UTF-8 encoding, so it must be escaped as <c>\uXXXX</c>.
+    /// </summary>
+    private static bool IsLoneSurrogate(string value, int i)
+    {
+        char c = value[i];
+        if (char.IsHighSurrogate(c))
+        {
+            return i + 1 >= value.Length || !char.IsLowSurrogate(value[i + 1]);
+        }
+
+        if (char.IsLowSurrogate(c))
+        {
+            return i == 0 || !char.IsHighSurrogate(value[i - 1]);
+        }
+
+        return false;
+    }
+
     private static void AppendValueField(StringBuilder buffer, string key, string value)
     {
         // Handle null values
@@ -408,11 +434,12 @@ public sealed class Logger : IDisposable
         for (int i = 0; i < value.Length; i++)
         {
             char c = value[i];
-            if (c == '"' || c == '\\' || IsEscapable(c))
+            if (c == '"' || c == '\\' || IsEscapable(c) || IsLoneSurrogate(value, i))
             {
-                // Quote and escape the delimiters plus any control character or Unicode line
-                // separator, so a value cannot forge extra records or inject terminal escape sequences
-                // into downstream consumers (char.IsControl covers CR/LF/TAB and the C0/C1 controls).
+                // Quote and escape the delimiters plus any control character, Unicode line
+                // separator or unpaired surrogate, so a value cannot forge extra records, inject
+                // terminal escape sequences into downstream consumers, or fail UTF-8 encoding
+                // (char.IsControl covers CR/LF/TAB and the C0/C1 controls).
                 needsQuotes = true;
                 hasSpecialChars = true;
             }
@@ -452,7 +479,7 @@ public sealed class Logger : IDisposable
                         buffer.Append("\\t");
                         break;
                     default:
-                        if (IsEscapable(c))
+                        if (IsEscapable(c) || IsLoneSurrogate(value, i))
                         {
                             buffer.Append("\\u");
                             buffer.Append(((int)c).ToString("x4", CultureInfo.InvariantCulture));

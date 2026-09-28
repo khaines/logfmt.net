@@ -272,6 +272,106 @@ namespace Logfmt.Tests
       }
     }
 
+    /// <summary>
+    /// Tests that an unpaired (lone) surrogate in a value is escaped as \uXXXX, round-trips through the
+    /// parser, and does not throw. The default StreamWriter encoding throws EncoderFallbackException on
+    /// a lone surrogate and leaves it in the writer buffer, which used to break every later log call.
+    /// (Plain string literals are used rather than InlineData: attribute strings are stored as UTF-8 in
+    /// metadata, which cannot hold a lone surrogate.)
+    /// </summary>
+    [Fact]
+    public void LoneSurrogateInValueIsEscapedAndDoesNotThrow()
+    {
+      foreach (var loneSurrogate in new[] { '\ud800', '\udbff', '\udc00', '\udfff' })
+      {
+        var outputStream = new MemoryStream();
+        using var logger = new Logger(outputStream);
+
+        var value = "abc" + loneSurrogate + "def";
+        var escaped = "\\u" + ((int)loneSurrogate).ToString("x4", System.Globalization.CultureInfo.InvariantCulture);
+        logger.Info("m", "k", value);
+
+        outputStream.Seek(0, SeekOrigin.Begin);
+        var output = new StreamReader(outputStream).ReadLine();
+
+        // Wire form: quoted, with the lone surrogate escaped rather than written raw.
+        Assert.Contains("k=\"abc" + escaped + "def\"", output.Split(' '));
+
+        // The parser decodes the escape back to the original (unpaired) code unit.
+        var dict = ParseToDict(output);
+        Assert.Equal(value, dict["k"]);
+        AssertFieldSet(output, "k");
+      }
+    }
+
+    /// <summary>
+    /// Tests that the logger keeps working after a value with a lone surrogate: the writer is not left
+    /// in a poisoned state and clean entries after the hostile one are written intact.
+    /// </summary>
+    [Fact]
+    public void LoggerStillWritesAfterLoneSurrogateValue()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      logger.Info("first", "k", "bad\ud800");
+      logger.Info("second", "k", "good");
+      logger.Info("third", "k", "\udc00");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var lines = new List<string>();
+      string line;
+      while ((line = reader.ReadLine()) != null)
+      {
+        lines.Add(line);
+      }
+
+      Assert.Equal(3, lines.Count);
+      Assert.Equal("first", ParseToDict(lines[0])["msg"]);
+      Assert.Equal("second", ParseToDict(lines[1])["msg"]);
+      Assert.Equal("good", ParseToDict(lines[1])["k"]);
+      Assert.Equal("third", ParseToDict(lines[2])["msg"]);
+    }
+
+    /// <summary>
+    /// Tests that a lone surrogate in the message field (always quoted) is escaped too, and that a lone
+    /// surrogate decoded by the parser can be re-logged without throwing.
+    /// </summary>
+    [Fact]
+    public void ParsedLoneSurrogateCanBeReLogged()
+    {
+      var parsed = LogfmtParser.Parse("msg=\"x\\ud800y\"");
+      Assert.Equal("x\ud800y", parsed[0].Value);
+
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+      logger.Log(SeverityLevel.Info, new List<KeyValuePair<string, string>>(parsed).ToArray());
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+      Assert.Equal("x\ud800y", ParseToDict(output)["msg"]);
+      Assert.Contains("msg=\"x\\ud800y\"", output);
+    }
+
+    /// <summary>
+    /// Tests that a valid surrogate pair is still written raw (not escaped) so the lone-surrogate
+    /// escaping does not regress ordinary astral-plane text.
+    /// </summary>
+    [Fact]
+    public void ValidSurrogatePairIsNotEscaped()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      logger.Info("m", "k", "\U0001F600");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var output = new StreamReader(outputStream).ReadLine();
+      Assert.Contains("k=\U0001F600", output.Split(' '));
+      Assert.DoesNotContain("\\u", output);
+    }
+
     private static void AssertFieldSet(string line, params string[] dataKeys)
     {
       var keys = new List<string>();
