@@ -225,6 +225,7 @@ namespace Logfmt.Tests
 
       Assert.Contains("level=error", output, StringComparison.InvariantCultureIgnoreCase);
       Assert.Contains("msg=\"An error occurred\"", output, StringComparison.InvariantCultureIgnoreCase);
+      Assert.Contains("exception_type=System.InvalidOperationException", output, StringComparison.InvariantCultureIgnoreCase);
       Assert.Contains("exception_msg=\"Test exception\"", output, StringComparison.InvariantCultureIgnoreCase);
     }
 

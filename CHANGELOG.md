@@ -3,6 +3,7 @@
 ## Unreleased
 
 - [BUGFIX] Extensions.Logging: `ILogger.Log` now emits `exception_type`, `exception_msg` and `exception_stack` for the exception passed to it, matching the OpenTelemetry exporter. Previously the exception was only handed to the formatter, so `LogError(ex, ...)` dropped it entirely.
+- [BUGFIX] OpenTelemetryLogging: `ConsoleLogExporter` now also emits `exception_type` for a record's exception, alongside the existing `exception_msg` and `exception_stack`, so its schema actually matches the Extensions.Logging provider above.
 
 ## 1.1.1 / 2026-09-25
 
