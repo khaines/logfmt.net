@@ -1266,6 +1266,28 @@ namespace Logfmt.Tests
       Assert.Null(Record.Exception(() => provider.Dispose()));
     }
 
+    /// <summary>
+    /// Tests that a lone surrogate in a state value does not throw out of ILogger.Log and does not break
+    /// later entries on the same logger.
+    /// </summary>
+    [Fact]
+    public void TestILoggerLoneSurrogateValueDoesNotThrow()
+    {
+      var outputStream = new MemoryStream();
+      ILogger logger = new ExtensionLogger(new Logger(outputStream), this.GetConfiguration, "test");
+
+      logger.LogInformation("user {Name}", "\udc00");
+      logger.LogInformation("after");
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var first = reader.ReadLine();
+      var second = reader.ReadLine();
+
+      Assert.Contains("Name=\"\\udc00\"", first);
+      Assert.Contains("msg=\"after\"", second);
+    }
+
     private static Dictionary<string, string> ParseFields(string line)
     {
       var fields = new Dictionary<string, string>();
