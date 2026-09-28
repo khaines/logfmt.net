@@ -72,6 +72,7 @@ public sealed class Logger : IDisposable
     {
         this.levelFilter = levelFilter;
         _outputStream = stream;
+
         // Never throw on an unpaired UTF-16 surrogate: the default StreamWriter encoding throws
         // EncoderFallbackException and leaves the bad chars in its buffer, so every later write on the
         // same writer throws too. The encoder escapes lone surrogates before they reach the writer,

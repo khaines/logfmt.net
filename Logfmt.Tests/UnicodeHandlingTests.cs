@@ -321,7 +321,7 @@ namespace Logfmt.Tests
       outputStream.Seek(0, SeekOrigin.Begin);
       var reader = new StreamReader(outputStream);
       var lines = new List<string>();
-      string? line;
+      string line;
       while ((line = reader.ReadLine()) != null)
       {
         lines.Add(line);
