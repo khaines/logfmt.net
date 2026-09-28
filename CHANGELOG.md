@@ -3,6 +3,8 @@
 ## Unreleased
 
 - [SECURITY] Extensions.Logging: All category loggers created by an `ExtensionLoggerProvider` now share one root `Logger` (one stdout handle, one write lock). Previously each category opened its own stdout handle that was never released, and lines longer than the writer buffer from different categories could interleave and corrupt each other on stdout. A new `ExtensionLoggerProvider(IOptionsMonitor, Logger)` constructor lets callers supply the root logger.
+- [BUGFIX] Extensions.Logging: `ILogger.Log` now emits `exception_type`, `exception_msg` and `exception_stack` for the exception passed to it, matching the OpenTelemetry exporter. Previously the exception was only handed to the formatter, so `LogError(ex, ...)` dropped it entirely.
+- [BUGFIX] OpenTelemetryLogging: `ConsoleLogExporter` now also emits `exception_type` for a record's exception, alongside the existing `exception_msg` and `exception_stack`, so its schema actually matches the Extensions.Logging provider above.
 - [SECURITY] Encoder: An unpaired UTF-16 surrogate in a value is now quoted and escaped as `\uXXXX` instead of reaching the writer raw. Previously the writer's throwing UTF-8 encoding raised `EncoderFallbackException` out of `Log()` and left the bad chars in its buffer, so every later log call on that logger failed too (and the OpenTelemetry exporter silently dropped all later records). The writer now uses a non-throwing encoding and the write catch covers encoder errors as a backstop.
 
 ## 1.1.1 / 2026-09-25

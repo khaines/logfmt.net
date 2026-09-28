@@ -89,7 +89,7 @@ namespace Logfmt.Tests
 
       // The spaced exception message is quoted verbatim on the wire (defeats symmetric masking).
       Assert.Contains("exception_msg=\"payment gateway timeout\"", output);
-      AssertKeys(output, "ts", "level", "msg", "exception_msg", "exception_stack", "category", "OrderId", "_OriginalFormat_");
+      AssertKeys(output, "ts", "level", "msg", "exception_type", "exception_msg", "exception_stack", "category", "OrderId", "_OriginalFormat_");
     }
 
     /// <summary>
