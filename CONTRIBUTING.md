@@ -17,6 +17,8 @@ The project is a standard .NET solution. You can build it using the .NET CLI fro
 dotnet build
 ```
 
+NuGet restores use lock files (`packages.lock.json`) and CI restores with `--locked-mode`. Commit the regenerated `packages.lock.json` files together with any `Directory.Packages.props` change. If CI fails restore in `--locked-mode`, run `dotnet restore --force-evaluate` and commit the result.
+
 ## Running Tests
 
 We use `xUnit` for testing. Please ensure all tests pass before submitting a Pull Request.
