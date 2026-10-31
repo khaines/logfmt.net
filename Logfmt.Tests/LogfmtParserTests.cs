@@ -579,6 +579,11 @@ namespace Logfmt.Tests
       var truncated = LogfmtParser.Parse("k=\"a\\u12");
       Assert.Single(truncated);
       Assert.Equal("a\\u12", truncated[0].Value);
+
+      // Whitespace inside the four hex digits is not a valid escape.
+      var spaced = LogfmtParser.Parse("k=\"a\\u 41 b\"");
+      Assert.Single(spaced);
+      Assert.Equal("a\\u 41 b", spaced[0].Value);
     }
   }
 }

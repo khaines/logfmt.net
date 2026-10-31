@@ -126,7 +126,7 @@ public static class LogfmtParser
                         break;
                     case 'u':
                         if (pos + 6 <= len &&
-                            int.TryParse(line.AsSpan(pos + 2, 4), System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out int codePoint))
+                            int.TryParse(line.AsSpan(pos + 2, 4), System.Globalization.NumberStyles.AllowHexSpecifier, System.Globalization.CultureInfo.InvariantCulture, out int codePoint))
                         {
                             buffer.Append((char)codePoint);
                             pos += 6;

@@ -1165,6 +1165,18 @@ namespace Logfmt.Tests
     }
 
     /// <summary>
+    /// Tests that a null key/value pair array throws ArgumentNullException, like the other overloads.
+    /// </summary>
+    [Fact]
+    public void NullKeyValuePairArrayThrowsArgumentNullException()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      Assert.Throws<ArgumentNullException>(() => logger.Log(SeverityLevel.Info, (KeyValuePair<string, string>[])null));
+    }
+
+    /// <summary>
     /// Tests that a key consisting only of underscores is valid.
     /// </summary>
     [Fact]

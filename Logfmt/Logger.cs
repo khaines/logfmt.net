@@ -145,6 +145,8 @@ public sealed class Logger : IDisposable
     /// </remarks>
     public void Log(SeverityLevel severity, params KeyValuePair<string, string>[] kvpairs)
     {
+        ArgumentNullException.ThrowIfNull(kvpairs);
+
         if (!IsEnabled(severity))
         {
             return;
