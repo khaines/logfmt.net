@@ -31,6 +31,9 @@ public sealed class Logger : IDisposable
 
     private const int MaxCachedBuilderCapacity = 1024;
 
+    // The lowest Cf code point is U+00AD (soft hyphen), so ASCII and most Latin-1 skip the category lookup.
+    private const char FirstFormatChar = '\u00AD';
+
     [ThreadStatic]
     private static StringBuilder? cachedBuilder;
 
@@ -403,6 +406,33 @@ public sealed class Logger : IDisposable
     private static bool IsEscapable(char c) => char.IsControl(c) || c == '\u2028' || c == '\u2029';
 
     /// <summary>
+    /// Returns true when the char at <paramref name="i"/> belongs to a Unicode format character
+    /// (general category Cf), such as bidi overrides, zero-width characters, the BOM or a TAG character.
+    /// A supplementary-plane Cf code point is detected from either of its surrogate halves, so both
+    /// halves are escaped and the parser reassembles the pair.
+    /// </summary>
+    private static bool IsFormatCharAt(string value, int i)
+    {
+        char c = value[i];
+
+        if (!char.IsSurrogate(c))
+        {
+            return char.GetUnicodeCategory(c) == UnicodeCategory.Format;
+        }
+
+        if (char.IsHighSurrogate(c))
+        {
+            return i + 1 < value.Length
+                && char.IsLowSurrogate(value[i + 1])
+                && CharUnicodeInfo.GetUnicodeCategory(char.ConvertToUtf32(c, value[i + 1])) == UnicodeCategory.Format;
+        }
+
+        return i > 0
+            && char.IsHighSurrogate(value[i - 1])
+            && CharUnicodeInfo.GetUnicodeCategory(char.ConvertToUtf32(value[i - 1], c)) == UnicodeCategory.Format;
+    }
+
+    /// <summary>
     /// Returns true when the char at <paramref name="i"/> is a surrogate that is not part of a valid
     /// high/low pair. Such a char has no UTF-8 encoding, so it must be escaped as <c>\uXXXX</c>.
     /// </summary>
@@ -437,11 +467,12 @@ public sealed class Logger : IDisposable
         for (int i = 0; i < value.Length; i++)
         {
             char c = value[i];
-            if (c == '"' || c == '\\' || IsEscapable(c) || IsLoneSurrogate(value, i))
+            if (c == '"' || c == '\\' || IsEscapable(c) || IsLoneSurrogate(value, i) || (c >= FirstFormatChar && IsFormatCharAt(value, i)))
             {
-                // Quote and escape the delimiters plus any control character, Unicode line
-                // separator or unpaired surrogate, so a value cannot forge extra records, inject
-                // terminal escape sequences into downstream consumers, or fail UTF-8 encoding
+                // Quote and escape the delimiters plus any control, format (Cf, including
+                // supplementary-plane), U+2028/U+2029 or unpaired surrogate char, so a value
+                // cannot forge extra records, inject terminal escape sequences into downstream
+                // consumers, hide or reorder text (bidi overrides), or fail UTF-8 encoding
                 // (char.IsControl covers CR/LF/TAB and the C0/C1 controls).
                 needsQuotes = true;
                 hasSpecialChars = true;
@@ -482,7 +513,7 @@ public sealed class Logger : IDisposable
                         buffer.Append("\\t");
                         break;
                     default:
-                        if (IsEscapable(c) || IsLoneSurrogate(value, i))
+                        if (IsEscapable(c) || IsLoneSurrogate(value, i) || (c >= FirstFormatChar && IsFormatCharAt(value, i)))
                         {
                             buffer.Append("\\u");
                             buffer.Append(((int)c).ToString("x4", CultureInfo.InvariantCulture));

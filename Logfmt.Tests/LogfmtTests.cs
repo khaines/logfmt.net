@@ -431,6 +431,109 @@ namespace Logfmt.Tests
     }
 
     /// <summary>
+    /// Tests that BMP Unicode format characters (category Cf) are quoted and escaped as lowercase
+    /// \uXXXX and never emitted raw (#106), and that the parser restores the original value.
+    /// </summary>
+    [Fact]
+    public void FormatCharactersAreEscapedAndRoundTrip()
+    {
+      var cases = new[]
+      {
+        ("\u202e", "\\u202e"), // right-to-left override
+        ("\u200b", "\\u200b"), // zero width space
+        ("\ufeff", "\\ufeff"), // BOM / zero width no-break space
+        ("\u00ad", "\\u00ad"), // soft hyphen (lowest Cf)
+        ("\u200d", "\\u200d"), // zero width joiner
+        ("\u200e", "\\u200e"),
+        ("\u200f", "\\u200f"),
+        ("\u2066", "\\u2066"),
+        ("\u2067", "\\u2067"),
+        ("\u2068", "\\u2068"),
+        ("\u2069", "\\u2069"),
+      };
+
+      foreach (var (ch, esc) in cases)
+      {
+        var value = "a" + ch + "b";
+        var output = LogSingleValue(value);
+
+        Assert.Contains("k=\"a" + esc + "b\"", output);
+        Assert.DoesNotContain(ch, output, StringComparison.Ordinal);
+        Assert.Equal(value, ParseSingle(output)["k"]);
+      }
+    }
+
+    /// <summary>
+    /// Tests that a value mixing ASCII and a Cf character is quoted exactly once.
+    /// </summary>
+    [Fact]
+    public void FormatCharacterValueIsQuotedExactlyOnce()
+    {
+      var output = LogSingleValue("admin\u202eevil");
+
+      Assert.Contains("k=\"admin\\u202eevil\"", output);
+      Assert.Equal(2, CountOccurrences(output.Substring(output.IndexOf("k=", StringComparison.Ordinal)), '"'));
+    }
+
+    /// <summary>
+    /// Tests that supplementary-plane Cf code points (TAG block, musical format controls) are escaped as
+    /// both surrogate halves and round-trip, while other supplementary characters are unchanged.
+    /// </summary>
+    [Fact]
+    public void SupplementaryFormatCharactersAreEscapedAndRoundTrip()
+    {
+      var tag = LogSingleValue("a\U000E0041b"); // TAG LATIN CAPITAL LETTER A
+      Assert.Contains("k=\"a\\udb40\\udc41b\"", tag);
+      Assert.Equal("a\U000E0041b", ParseSingle(tag)["k"]);
+
+      var musical = LogSingleValue("a\U0001D173b"); // MUSICAL SYMBOL BEGIN BEAM
+      Assert.Contains("k=\"a\\ud834\\udd73b\"", musical);
+      Assert.Equal("a\U0001D173b", ParseSingle(musical)["k"]);
+
+      foreach (var value in new[] { "\U0001F600", "\U0001F44D\U0001F3FD", "\U00020BB7" })
+      {
+        var output = LogSingleValue(value);
+        Assert.Contains("k=" + value, output);
+        Assert.DoesNotContain("\\u", output, StringComparison.Ordinal);
+        Assert.Equal(value, ParseSingle(output)["k"]);
+      }
+    }
+
+    /// <summary>
+    /// Tests that emoji sequences containing Cf characters (ZWJ family, subdivision flag built from TAG
+    /// characters) are quoted with escapes and round-trip exactly.
+    /// </summary>
+    [Fact]
+    public void EmojiSequencesWithFormatCharactersRoundTrip()
+    {
+      var family = "\U0001F468\u200d\U0001F469\u200d\U0001F467";
+      var familyOut = LogSingleValue(family);
+      Assert.Contains("k=\"\U0001F468\\u200d\U0001F469\\u200d\U0001F467\"", familyOut);
+      Assert.Equal(family, ParseSingle(familyOut)["k"]);
+
+      // England flag: black flag + TAG g b e n g + CANCEL TAG
+      var flag = "\U0001F3F4\U000E0067\U000E0062\U000E0065\U000E006E\U000E0067\U000E007F";
+      var flagOut = LogSingleValue(flag);
+      Assert.Contains("k=\"\U0001F3F4\\udb40\\udc67\\udb40\\udc62\\udb40\\udc65\\udb40\\udc6e\\udb40\\udc67\\udb40\\udc7f\"", flagOut);
+      Assert.Equal(flag, ParseSingle(flagOut)["k"]);
+    }
+
+    /// <summary>
+    /// Tests that plain ASCII and ordinary non-ASCII values are not quoted or escaped by the Cf handling.
+    /// </summary>
+    [Fact]
+    public void OrdinaryValuesAreUnchangedByFormatCharacterEscaping()
+    {
+      foreach (var value in new[] { "plain", "caf\u00e9", "\u4e2d\u6587", "e\u0301" })
+      {
+        var output = LogSingleValue(value);
+        Assert.Contains("k=" + value + "\n", output + "\n");
+        Assert.DoesNotContain("\\u", output, StringComparison.Ordinal);
+        Assert.Equal(value, ParseSingle(output)["k"]);
+      }
+    }
+
+    /// <summary>
     /// Tests that a literal backslash-u sequence in user text (e.g. \u0041) round-trips as literal text
     /// and is NOT decoded to a character -- the encoder doubles the backslash, so the parser's \uXXXX
     /// decode never fires on it.
@@ -1760,6 +1863,33 @@ namespace Logfmt.Tests
 
       Assert.Null(ex);
       Assert.False(disposedWhileWriteInFlight, "Dispose must wait for the in-flight write (serialized via the write lock)");
+    }
+
+    private static string LogSingleValue(string value)
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+      logger.Info("m", "k", value);
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      var output = reader.ReadLine();
+      Assert.Null(reader.ReadLine());
+      return output;
+    }
+
+    private static int CountOccurrences(string text, char c)
+    {
+      int count = 0;
+      foreach (var ch in text)
+      {
+        if (ch == c)
+        {
+          count++;
+        }
+      }
+
+      return count;
     }
 
     /// <summary>

@@ -372,6 +372,89 @@ namespace Logfmt.Tests
       Assert.DoesNotContain("\\u", output);
     }
 
+    /// <summary>
+    /// Sweeps every UTF-16 code unit and checks the value is written as a \uXXXX escape exactly when it
+    /// is a control (other than CR/LF/TAB, which use short escapes), U+2028/U+2029, Cf or surrogate char,
+    /// and that every non-surrogate round-trips through the parser (#106). Expectations come from the
+    /// runtime's Unicode tables, so no Cf count is hard-coded.
+    /// </summary>
+    [Fact]
+    public void EveryBmpCodeUnitIsEscapedExactlyWhenExpected()
+    {
+      var outputStream = new MemoryStream();
+      using var logger = new Logger(outputStream);
+
+      for (int i = 0; i <= 0xFFFF; i++)
+      {
+        logger.Info("m", "k", "a" + (char)i + "b");
+      }
+
+      outputStream.Seek(0, SeekOrigin.Begin);
+      var reader = new StreamReader(outputStream);
+      for (int i = 0; i <= 0xFFFF; i++)
+      {
+        var c = (char)i;
+        var line = reader.ReadLine();
+        Assert.NotNull(line);
+
+        bool expected = (char.IsControl(c) && c != '\r' && c != '\n' && c != '\t')
+          || c == '\u2028'
+          || c == '\u2029'
+          || char.GetUnicodeCategory(c) == System.Globalization.UnicodeCategory.Format
+          || char.IsSurrogate(c);
+
+        Assert.True(
+          line.Contains("\\u" + i.ToString("x4", System.Globalization.CultureInfo.InvariantCulture), System.StringComparison.Ordinal) == expected,
+          "U+" + i.ToString("X4", System.Globalization.CultureInfo.InvariantCulture) + " expected escaped=" + expected);
+
+        if (!char.IsSurrogate(c))
+        {
+          Assert.Equal("a" + c + "b", ParseToDict(line)["k"]);
+        }
+      }
+
+      Assert.Null(reader.ReadLine());
+    }
+
+    /// <summary>
+    /// Sweeps every supplementary-plane code point: both surrogate halves are escaped exactly when the
+    /// code point is Cf (per the runtime's tables), and every code point round-trips through the parser.
+    /// </summary>
+    [Fact]
+    public void EverySupplementaryCodePointIsEscapedExactlyWhenFormat()
+    {
+      for (int plane = 1; plane <= 16; plane++)
+      {
+        var outputStream = new MemoryStream();
+        using var logger = new Logger(outputStream);
+        int start = plane << 16;
+        for (int cp = start; cp < start + 0x10000; cp++)
+        {
+          logger.Info("m", "k", "a" + char.ConvertFromUtf32(cp) + "b");
+        }
+
+        outputStream.Seek(0, SeekOrigin.Begin);
+        var reader = new StreamReader(outputStream);
+        for (int cp = start; cp < start + 0x10000; cp++)
+        {
+          var s = char.ConvertFromUtf32(cp);
+          var line = reader.ReadLine();
+          Assert.NotNull(line);
+
+          bool isFormat = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(cp) == System.Globalization.UnicodeCategory.Format;
+          var escaped = "\\u" + ((int)s[0]).ToString("x4", System.Globalization.CultureInfo.InvariantCulture)
+            + "\\u" + ((int)s[1]).ToString("x4", System.Globalization.CultureInfo.InvariantCulture);
+          Assert.True(line.Contains(escaped, System.StringComparison.Ordinal) == isFormat, "U+" + cp.ToString("X", System.Globalization.CultureInfo.InvariantCulture));
+          if (!isFormat)
+          {
+            Assert.DoesNotContain("\\u", line, System.StringComparison.Ordinal);
+          }
+
+          Assert.Equal("a" + s + "b", ParseToDict(line)["k"]);
+        }
+      }
+    }
+
     private static void AssertFieldSet(string line, params string[] dataKeys)
     {
       var keys = new List<string>();
