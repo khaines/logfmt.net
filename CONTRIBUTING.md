@@ -17,6 +17,12 @@ The project is a standard .NET solution. You can build it using the .NET CLI fro
 dotnet build
 ```
 
+NuGet restores use lock files (`packages.lock.json`), and CI restores with `--locked-mode`.
+
+* After any change to package references, target frameworks or `Directory.Packages.props`, run `dotnet restore` and commit the regenerated `packages.lock.json` files with the change.
+* If CI fails restore in `--locked-mode` (NU1004), run `dotnet restore --force-evaluate` and commit the result.
+* When editing workflows, the explicit `dotnet restore --locked-mode` step must be the first dotnet step in every job, and every other dotnet command that builds, tests or packs must pass `--no-restore` or `--no-build`, otherwise an implicit restore silently rewrites the lock files. `dotnet nuget push` does not restore, so it needs neither flag.
+
 ## Running Tests
 
 We use `xUnit` for testing. Please ensure all tests pass before submitting a Pull Request.
