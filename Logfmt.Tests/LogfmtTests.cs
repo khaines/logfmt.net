@@ -15,6 +15,32 @@ namespace Logfmt.Tests
   public class LogfmtTests
   {
     /// <summary>
+    /// Gets a hard-coded list of code points that must always be escaped, independent of the runtime's
+    /// Unicode tables: bidi controls, zero-width characters, BOM and the TAG characters (#106).
+    /// </summary>
+    /// <returns>The code points, one per test case.</returns>
+    public static IEnumerable<object[]> MustEscapeCodePoints()
+    {
+      var ranges = new[]
+      {
+        (0x202A, 0x202E),
+        (0x2066, 0x2069),
+        (0x200B, 0x200F),
+        (0xFEFF, 0xFEFF),
+        (0xE0001, 0xE0001),
+        (0xE0020, 0xE007F),
+      };
+
+      foreach (var (first, last) in ranges)
+      {
+        for (int cp = first; cp <= last; cp++)
+        {
+          yield return new object[] { cp };
+        }
+      }
+    }
+
+    /// <summary>
     /// Test for creating a basic logger and validating that fields are formatted correctly.
     /// </summary>
     [Fact]
@@ -461,6 +487,30 @@ namespace Logfmt.Tests
         Assert.DoesNotContain(ch, output, StringComparison.Ordinal);
         Assert.Equal(value, ParseSingle(output)["k"]);
       }
+    }
+
+    /// <summary>
+    /// Tests that each code point on the hard-coded must-escape list is quoted, written as lowercase
+    /// \uXXXX unit(s), never emitted raw, and round-trips through the parser.
+    /// </summary>
+    /// <param name="codePoint">The code point to test.</param>
+    [Theory]
+    [MemberData(nameof(MustEscapeCodePoints))]
+    public void HardCodedFormatCharactersAreAlwaysEscaped(int codePoint)
+    {
+      var ch = char.ConvertFromUtf32(codePoint);
+      var expected = string.Empty;
+      foreach (var unit in ch)
+      {
+        expected += "\\u" + ((int)unit).ToString("x4", System.Globalization.CultureInfo.InvariantCulture);
+      }
+
+      var value = "a" + ch + "b";
+      var output = LogSingleValue(value);
+
+      Assert.Contains("k=\"a" + expected + "b\"", output);
+      Assert.DoesNotContain(ch, output, StringComparison.Ordinal);
+      Assert.Equal(value, ParseSingle(output)["k"]);
     }
 
     /// <summary>
