@@ -136,6 +136,7 @@ public sealed class Logger : IDisposable
     /// </summary>
     /// <param name="severity">The severity of the log entry.</param>
     /// <param name="kvpairs">labels and values to include with the entry.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="kvpairs"/> is null.</exception>
     /// <remarks>
     /// The logger always emits the reserved fields <c>ts</c> (timestamp) and <c>level</c> first, and
     /// the <c>msg</c> field is emitted by the message-based overloads. A caller-supplied key that
@@ -149,6 +150,8 @@ public sealed class Logger : IDisposable
         {
             return;
         }
+
+        ArgumentNullException.ThrowIfNull(kvpairs);
 
         var buffer = cachedBuilder ?? new StringBuilder();
         cachedBuilder = null;
