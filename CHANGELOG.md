@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.2 / 2026-10-31
 
 - [SECURITY] Extensions.Logging: All category loggers created by an `ExtensionLoggerProvider` now share one root `Logger` (one stdout handle, one write lock). Previously each category opened its own stdout handle that was never released, and lines longer than the writer buffer from different categories could interleave and corrupt each other on stdout. A new `ExtensionLoggerProvider(IOptionsMonitor, Logger)` constructor lets callers supply the root logger.
 - [BUGFIX] Extensions.Logging: `ILogger.Log` now emits `exception_type`, `exception_msg` and `exception_stack` for the exception passed to it, matching the OpenTelemetry exporter. Previously the exception was only handed to the formatter, so `LogError(ex, ...)` dropped it entirely.
