@@ -7,3 +7,5 @@ Logfmt.Benchmarks/obj/
 BenchmarkDotNet.Artifacts/
 *.nupkg
 .vscode/
+.claude/worktrees
+.claude/settings.local.json
