@@ -9,7 +9,7 @@
 ## Features
 
 - **High Performance**: Optimized for low allocations and high throughput.
-- **Modern .NET Support**: Targets .NET 8.0 and .NET 10.0.
+- **Modern .NET Support**: Targets .NET 10.0.
 - **Encode & Decode**: Write logfmt output and parse logfmt strings back into key-value pairs.
 - **Standard Integrations**:
   - Native support for `Microsoft.Extensions.Logging`.
