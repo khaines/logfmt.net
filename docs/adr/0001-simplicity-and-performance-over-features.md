@@ -30,7 +30,7 @@ We surveyed logfmt implementations across six libraries in four languages:
 - Integrate with OpenTelemetry as a log exporter
 - Support the `WithData()` builder pattern for log context (the logfmt-native equivalent of scopes)
 - Maintain thread safety for concurrent logging
-- Target modern .NET (currently net8.0 and net10.0)
+- Target modern .NET (currently net10.0)
 
 ### What we will NOT do
 

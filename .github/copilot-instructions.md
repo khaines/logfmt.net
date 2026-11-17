@@ -13,7 +13,7 @@ dotnet test --filter "FullyQualifiedName~TestMethodName"
 dotnet test --filter "FullyQualifiedName~Logfmt.Tests.LogfmtTests"
 
 # Run tests for a specific framework
-dotnet test Logfmt.Tests/ --framework net8.0
+dotnet test Logfmt.Tests/ --framework net10.0
 
 # Run benchmarks
 cd Logfmt.Benchmarks && dotnet run -c Release
@@ -31,7 +31,7 @@ This is a .NET library that formats structured log output in [logfmt](https://br
 
 ## Conventions
 
-- **Targets:** net8.0 and net10.0 (library and tests). Benchmarks target net8.0 only. SDK version pinned to 10.0.100 in `global.json`.
+- **Targets:** net10.0 (library, tests and benchmarks). SDK version pinned to 10.0.100 in `global.json`.
 - **Central package management:** All package versions are in `Directory.Packages.props`. Use `VersionOverride` in .csproj files only when necessary.
 - **C# style:** File-scoped namespaces, nullable reference types enabled, implicit usings enabled. `SA1101` (prefix `this.`) is disabled.
 - **Testing:** xUnit with built-in `Assert`. Tests capture output by writing to a `MemoryStream` and reading it back. Test classes are named `{Feature}Tests` with `[Fact]` methods.

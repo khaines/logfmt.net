@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+        <TargetFramework>net10.0</TargetFramework>
         <AssemblyName>logfmt.net</AssemblyName>
         <PackageVersion>1.1.2</PackageVersion>
         <Title>logfmt.net</Title>
