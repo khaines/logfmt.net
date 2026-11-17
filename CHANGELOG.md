@@ -1,10 +1,12 @@
 # Changelog
 
-## Unreleased
+## 1.2.0 / 2026-11-17
 
 - [CHANGE] Build: Drop the net8.0 target; the library now targets net10.0 only. .NET 8 reached end of support on 2026-11-10, and Microsoft.Extensions 11.0 no longer supports it. Consumers on net8.0 should stay on 1.1.x. #131
 - [ENHANCEMENT] Dependencies: Microsoft.Extensions.* 10.0.14 -> 11.0.0. #131
 - [ENHANCEMENT] Dependencies: OpenTelemetry 1.20.1 -> 1.21.0. #134
+- [ENHANCEMENT] Build: Microsoft.SourceLink.GitHub 10.0.403 -> 11.0.100. #133
+- [ENHANCEMENT] Build: StyleCop.Analyzers 1.1.118 -> 1.3.180 and Microsoft.NET.Test.Sdk 18.11.0 -> 18.12.0 (development-only, not shipped in the package). #132 #135
 
 ## 1.1.2 / 2026-10-31
 
