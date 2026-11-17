@@ -24,5 +24,10 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 5
+    groups:
+      # init and analyze must run the same version or the CodeQL job fails.
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
     reviewers:
       - "khaines"
