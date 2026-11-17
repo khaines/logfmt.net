@@ -3,7 +3,7 @@
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <AssemblyName>logfmt.net</AssemblyName>
-        <PackageVersion>1.1.2</PackageVersion>
+        <PackageVersion>1.2.0</PackageVersion>
         <Title>logfmt.net</Title>
         <Authors>Ken Haines</Authors>
         <Description>A fast, lightweight structured logging library for .NET using the logfmt format. Includes encoder, parser, Microsoft.Extensions.Logging provider, and OpenTelemetry exporter. ~110ns per log call, zero-alloc when filtered.</Description>
@@ -17,6 +17,12 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <PackageReleaseNotes>
+      1.2.0:
+      - Breaking: dropped the net8.0 target; the package now targets net10.0 only. Stay on 1.1.x for net8.0.
+      - Microsoft.Extensions.* dependencies updated to 11.0.0.
+      - OpenTelemetry dependency updated to 1.21.0.
+      Full history: https://github.com/khaines/logfmt.net/blob/main/CHANGELOG.md
+
       1.0.0:
       - logfmt parser (LogfmtParser.Parse) for decoding logfmt strings into key-value pairs.
       - ILoggingBuilder.AddLogfmt() extension for ASP.NET Core, Generic Host, and Minimal APIs.

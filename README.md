@@ -25,6 +25,8 @@ Install the package via NuGet:
 dotnet add package logfmt.net
 ```
 
+Requires .NET 10 or later. Version 1.2.0 dropped the .NET 8 target; projects still on .NET 8 should stay on the 1.1.x releases.
+
 ## Usage
 
 ### Basic Usage
