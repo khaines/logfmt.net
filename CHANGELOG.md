@@ -4,6 +4,7 @@
 
 - [CHANGE] Build: Drop the net8.0 target; the library now targets net10.0 only. .NET 8 reached end of support on 2026-11-10, and Microsoft.Extensions 11.0 no longer supports it. Consumers on net8.0 should stay on 1.1.x. #131
 - [ENHANCEMENT] Dependencies: Microsoft.Extensions.* 10.0.14 -> 11.0.0. #131
+- [ENHANCEMENT] Dependencies: OpenTelemetry 1.20.1 -> 1.21.0. #134
 
 ## 1.1.2 / 2026-10-31
 
