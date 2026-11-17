@@ -6,7 +6,7 @@ First off, thank you for considering contributing to logfmt.net! It's people lik
 
 To work on this project, you will need the following tools installed on your machine:
 
-* **.NET SDK**: This project targets .NET 8.0 and .NET 10.0. You will need the .NET 10 SDK installed. You can download it from [dotnet.microsoft.com](https://dotnet.microsoft.com/download).
+* **.NET SDK**: This project targets .NET 10.0. You will need the .NET 10 SDK installed. You can download it from [dotnet.microsoft.com](https://dotnet.microsoft.com/download).
 * **IDE/Editor**: Visual Studio, JetBrains Rider, or VS Code (with C# Dev Kit) are recommended.
 
 ## Building the Project

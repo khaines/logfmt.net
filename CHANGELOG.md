@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- [CHANGE] Build: Drop the net8.0 target; the library now targets net10.0 only. .NET 8 reached end of support on 2026-11-10, and Microsoft.Extensions 11.0 no longer supports it. Consumers on net8.0 should stay on 1.1.x. #131
+- [ENHANCEMENT] Dependencies: Microsoft.Extensions.* 10.0.14 -> 11.0.0. #131
+
 ## 1.1.2 / 2026-10-31
 
 - [SECURITY] Extensions.Logging: All category loggers created by an `ExtensionLoggerProvider` now share one root `Logger` (one stdout handle, one write lock). Previously each category opened its own stdout handle that was never released, and lines longer than the writer buffer from different categories could interleave and corrupt each other on stdout. A new `ExtensionLoggerProvider(IOptionsMonitor, Logger)` constructor lets callers supply the root logger.
