@@ -15,7 +15,7 @@ public sealed class ExtensionLoggerProvider : ILoggerProvider
 {
     private const string Category = "category";
     private readonly IDisposable? _onChangeToken;
-    private readonly ConcurrentDictionary<string, ExtensionLogger> _loggers = new (StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, ExtensionLogger> _loggers = new(StringComparer.OrdinalIgnoreCase);
     private readonly Logger _rootLogger;
     private ExtensionLoggerConfiguration _currentConfig;
 
